@@ -1,9 +1,9 @@
 package com.deadrooster.slate.android;
 
-import android.app.Activity;
 import android.os.Bundle;
 
 import com.deadrooster.slate.android.fragments.EntryDetailFragment;
+import com.deadrooster.slate.android.ga.GAActivity;
 
 /**
  * An activity representing a single Entry detail screen. This activity is only
@@ -13,7 +13,7 @@ import com.deadrooster.slate.android.fragments.EntryDetailFragment;
  * This activity is mostly just a 'shell' activity containing nothing more than
  * a {@link EntryDetailFragment}.
  */
-public class REntryDetailActivity extends Activity {
+public class REntryDetailActivity extends GAActivity {
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {

@@ -1,7 +1,8 @@
 package com.deadrooster.slate.android;
 
+import java.util.HashMap;
+
 import android.app.ActionBar;
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -15,9 +16,13 @@ import android.widget.ImageView;
 
 import com.deadrooster.slate.android.fragments.EntryDetailFragment;
 import com.deadrooster.slate.android.fragments.EntryListFragment;
+import com.deadrooster.slate.android.ga.GAActivity;
+import com.deadrooster.slate.android.tapstream.TapStreamImpl;
 import com.deadrooster.slate.android.util.Callbacks;
+import com.tapstream.sdk.Config;
+import com.tapstream.sdk.Tapstream;
 
-public class REntryListActivity extends Activity implements Callbacks, ActionBar.OnNavigationListener {
+public class REntryListActivity extends GAActivity implements Callbacks, ActionBar.OnNavigationListener {
 
 	public static final String CURRENT_CATEGORY = "current_category";
 
@@ -32,6 +37,12 @@ public class REntryListActivity extends Activity implements Callbacks, ActionBar
 	protected void onCreate(Bundle savedInstanceState) {
 
 		super.onCreate(savedInstanceState);
+
+		// init TapStream
+		Config config = new Config();
+		Tapstream.create(getApplication(), TapStreamImpl.ACCOUNT_NAME, TapStreamImpl.SDK_SECRET, config);
+
+		// init layout
 		setContentView(R.layout.r_activity_entry_list_one_pane);
 
 		// set up the the action bar to show a dropdown list.
@@ -87,15 +98,14 @@ public class REntryListActivity extends Activity implements Callbacks, ActionBar
 		return true;
 	}
 
-	private void resetRefreshActionView() {
-		this.refreshItem.setActionView(null);
-	}
-
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		int itemId = item.getItemId();
 		switch (itemId) {
 		case R.id.refresh:
+
+			fireRefreshEvent();
+
 			startRotateRefreshIcon();
 			((EntryListFragment) getFragmentManager().findFragmentById(R.id.entry_list_container)).refreshData();
 			break;
@@ -105,6 +115,33 @@ public class REntryListActivity extends Activity implements Callbacks, ActionBar
 		return super.onOptionsItemSelected(item);
 	}
 
+	/**
+	 * Callback method from {@link EntryListFragment.Callbacks} indicating that
+	 * the item with the given ID was selected.
+	 */
+	@Override
+	public void onItemSelected(long id) {
+
+		if (this.twoPane) {
+			EntryDetailFragment fragment = (EntryDetailFragment) getFragmentManager().findFragmentById(R.id.entry_detail_container);
+			if (fragment == null) {
+				fragment = new EntryDetailFragment();
+				Bundle arguments = new Bundle();
+				arguments.putLong(EntryDetailFragment.ARG_ITEM_ID, id);
+				fragment.setArguments(arguments);
+				getFragmentManager().beginTransaction().replace(R.id.entry_detail_container, fragment).commitAllowingStateLoss();
+			} else {
+				fragment.updateContent(id);
+			}
+		} else {
+			Intent detailIntent = new Intent(this, REntryDetailActivity.class);
+			detailIntent.putExtra(CURRENT_CATEGORY, this.category);
+			detailIntent.putExtra(EntryDetailFragment.ARG_ITEM_ID, id);
+			startActivity(detailIntent);
+		}
+	}
+
+	// Action bar
 	private void setUpActionBar() {
 		final ActionBar actionBar = getActionBar();
 		actionBar.setDisplayShowTitleEnabled(false);
@@ -136,13 +173,6 @@ public class REntryListActivity extends Activity implements Callbacks, ActionBar
 		return true;
 	}
 
-	public void stopRotateRefreshIcon() {
-
-	    this.refreshItem.getActionView().clearAnimation();
-	    resetRefreshActionView();
-	    this.isRefreshing = false;
-	}
-
 	private void startRotateRefreshIcon() {
 
 		this.isRefreshing = true;
@@ -159,32 +189,25 @@ public class REntryListActivity extends Activity implements Callbacks, ActionBar
 		}
 	}
 
-	/**
-	 * Callback method from {@link EntryListFragment.Callbacks} indicating that
-	 * the item with the given ID was selected.
-	 */
-	@Override
-	public void onItemSelected(long id) {
+	public void stopRotateRefreshIcon() {
 
-		if (this.twoPane) {
-			EntryDetailFragment fragment = (EntryDetailFragment) getFragmentManager().findFragmentById(R.id.entry_detail_container);
-			if (fragment == null) {
-				fragment = new EntryDetailFragment();
-				Bundle arguments = new Bundle();
-				arguments.putLong(EntryDetailFragment.ARG_ITEM_ID, id);
-				fragment.setArguments(arguments);
-				getFragmentManager().beginTransaction().replace(R.id.entry_detail_container, fragment).commitAllowingStateLoss();
-			} else {
-				fragment.updateContent(id);
-			}
-		} else {
-			Intent detailIntent = new Intent(this, REntryDetailActivity.class);
-			detailIntent.putExtra(CURRENT_CATEGORY, this.category);
-			detailIntent.putExtra(EntryDetailFragment.ARG_ITEM_ID, id);
-			startActivity(detailIntent);
-		}
+	    this.refreshItem.getActionView().clearAnimation();
+	    resetRefreshActionView();
+	    this.isRefreshing = false;
 	}
 
+	private void resetRefreshActionView() {
+		this.refreshItem.setActionView(null);
+	}
+
+	// TapStream methods
+	private void fireRefreshEvent() {
+		HashMap<String, Object> params = new HashMap<String, Object>();
+		params.put(CURRENT_CATEGORY, Integer.valueOf(this.category));
+		TapStreamImpl.fireEvent(TapStreamImpl.Events.REFRESH, params);
+	}
+
+	// getters
 	public boolean isTwoPane() {
 		return twoPane;
 	}
