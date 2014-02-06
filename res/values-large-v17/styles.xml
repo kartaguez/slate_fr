@@ -1,0 +1,6 @@
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <style name="ActionBarButton" parent="@android:style/Widget.ActionButton">
+        <item name="android:paddingStart">16dip</item>
+        <item name="android:paddingEnd">16dip</item>
+    </style>
+</resources>

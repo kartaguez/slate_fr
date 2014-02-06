@@ -1,0 +1,3 @@
+<resources>
+    <item name="r_activity_entry_list_one_pane" type="layout">@layout/r_activity_entry_list_two_pane</item>
+</resources>
