@@ -2,8 +2,10 @@
 <resources>
 
     <string name="app_name">Slate.fr</string>
+    <string name="service_name">Service Slate.fr</string>
     <string name="empty_feed_list">Aucun article&#8230;</string>
     <string name="action_refresh">refresh</string>
+    <string name="action_last_refresh_date">last refresh date</string>
     <string name="title_activity_entry">Entry</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
@@ -16,4 +18,21 @@
     <string name="section_economie">Economie</string>
     <string name="section_culture">Culture</string>
     <string name="section_life">Life</string>
+
+    <string name="date_prefix_today">"Aujourd\'hui "</string>
+    <string name="date_prefix_yesterday">"Hier "</string>
+    <string name="date_prefix_days_ago">"Il y a %s"</string>
+    <string name="date_prefix_hour">"à "</string>
+    <string name="time_span_years">"Y"</string>
+    <string name="time_span_months">"M"</string>
+    <string name="time_span_weeks">"W"</string>
+    <string name="time_span_days">"D"</string>
+    <string name="time_ago_year_sing">"an"</string>
+    <string name="time_ago_month_sing">"mois"</string>
+    <string name="time_ago_week_sing">"semaine"</string>
+    <string name="time_ago_day_sing">"jour"</string>
+    <string name="time_ago_year_plur">"ans"</string>
+    <string name="time_ago_month_plur">"mois"</string>
+    <string name="time_ago_week_plur">"semaines"</string>
+    <string name="time_ago_day_plur">"jours"</string>
 </resources>

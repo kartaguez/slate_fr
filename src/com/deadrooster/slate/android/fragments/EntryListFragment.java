@@ -22,9 +22,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
 
-import com.deadrooster.slate.android.ActivityCategoryEntryList;
+import com.deadrooster.slate.android.EntryListActivity;
 import com.deadrooster.slate.android.R;
-import com.deadrooster.slate.android.REntryListActivity;
 import com.deadrooster.slate.android.adapters.EntryListAdapter;
 import com.deadrooster.slate.android.http.RSSFileFetcher;
 import com.deadrooster.slate.android.model.Entry;
@@ -61,7 +60,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 	private Context context = null;
 	private Callbacks callbacks = null;
 	private int activatedPosition = ListView.INVALID_POSITION;
-	public static SparseArray<String[]> categories;
 	private int category = 0;
 	private EntryListAdapter adapter = null;
 	private RefreshCounter counter = null;
@@ -70,6 +68,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	private ArrayList<HttpTask> httpTasks = new ArrayList<HttpTask>();
 	private ArrayList<ParseTask> parseTasks = new ArrayList<ParseTask>();
+	private SparseArray<List<Entry>> newEntries = new SparseArray<List<Entry>>();
 
 	public EntryListFragment() {
 	}
@@ -84,7 +83,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		}
 
 		// set up the the action bar to show a dropdown list.
-		initCategories();
 		this.category = 0;
 
 	}
@@ -124,15 +122,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 	}
 
 	// init
-	private void initCategories() {
-		ActivityCategoryEntryList.categories.put(0, new String[] {"une", getString(R.string.section_une)});
-		ActivityCategoryEntryList.categories.put(1, new String[] {"france", getString(R.string.section_france)});
-		ActivityCategoryEntryList.categories.put(2, new String[] {"monde", getString(R.string.section_monde)});
-		ActivityCategoryEntryList.categories.put(3, new String[] {"economie", getString(R.string.section_economie)});
-		ActivityCategoryEntryList.categories.put(4, new String[] {"culture", getString(R.string.section_culture)});
-		ActivityCategoryEntryList.categories.put(5, new String[] {"life", getString(R.string.section_life)});
-	}
-
 	private void initAdapter() {
 
 		String[] fromColumns = new String[] {Entries.TITLE, Entries.PREVIEW, Entries.THUMBNAIL_DATA, Entries.THUMBNAIL_URL};
@@ -171,7 +160,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 		// fetch rss file
 		HttpTask task = null;
-		for (int i = 0; i < 6; i++) {
+		for (int i = 0; i < EntryListActivity.categories.size(); i++) {
 			task = new HttpTask(i, counter);
 			this.httpTasks.add(task);
 			task.execute();
@@ -180,7 +169,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	}
 
-	// navigation rules
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
@@ -249,12 +237,11 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		activatedPosition = position;
 	}
 
-	private void stopRotateIcon() {
+	private void notifyRefreshDone(boolean isSuccess) {
 
-		if (callbacks instanceof REntryListActivity) {
-			((REntryListActivity) callbacks).stopRotateRefreshIcon();
+		if (callbacks instanceof EntryListActivity) {
+			((EntryListActivity) callbacks).finalizeRefreshBatch(isSuccess);
 		}
-
 	}
 
 	private void parseRssFile(String rssFileContent, int category, RefreshCounter counter) {
@@ -356,7 +343,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 				synchronized (this.counter) {
 					this.counter.decrementRefresh();
 					if (this.counter.isLast()){
-						stopRotateIcon();
+						notifyRefreshDone(false);
 					}
 				}
 			}
@@ -395,11 +382,16 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		protected void onPostExecute(List<Entry> result) {
 			super.onPostExecute(result);
 			parseTasks.remove(this);
-			updateEntriesDB(result, this.category);
+			newEntries.put(this.category ,result);
 			synchronized (this.counter) {
 				this.counter.decrementRefresh();
 				if (this.counter.isLast()){
-					stopRotateIcon();
+					notifyRefreshDone(true);
+					for (int i = 0; i < newEntries.size(); i++) {
+						int key = newEntries.keyAt(i);
+						updateEntriesDB(newEntries.get(key), key);
+					}
+					newEntries.clear();
 				}
 			}
 		}
@@ -426,7 +418,8 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		this.adapter.swapCursor(null);
 	}
 
-	static {
-		ActivityCategoryEntryList.categories = new SparseArray<String[]>();
+	public EntryListAdapter getAdapter() {
+		return adapter;
 	}
+
 }

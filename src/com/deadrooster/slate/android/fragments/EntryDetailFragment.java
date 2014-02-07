@@ -16,8 +16,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.deadrooster.slate.android.R;
-import com.deadrooster.slate.android.REntryDetailActivity;
-import com.deadrooster.slate.android.REntryListActivity;
+import com.deadrooster.slate.android.EntryDetailActivity;
+import com.deadrooster.slate.android.EntryListActivity;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromDb;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromInternet;
 import com.deadrooster.slate.android.model.Model.Entries;
@@ -26,8 +26,8 @@ import com.deadrooster.slate.android.util.DefaultImage;
 
 /**
  * A fragment representing a single Entry detail screen. This fragment is either
- * contained in a {@link REntryListActivity} in two-pane mode (on tablets) or a
- * {@link REntryDetailActivity} on handsets.
+ * contained in a {@link EntryListActivity} in two-pane mode (on tablets) or a
+ * {@link EntryDetailActivity} on handsets.
  */
 public class EntryDetailFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
 	/**

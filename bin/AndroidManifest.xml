@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.deadrooster.slate.android"
-    android:versionCode="2"
-    android:versionName="1.1.0" >
+    android:versionCode="3"
+    android:versionName="1.2.0" >
 
     <uses-sdk
         android:minSdkVersion="15"
@@ -18,33 +19,43 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
+
         <provider
             android:name="com.deadrooster.slate.android.provider.Provider"
             android:authorities="com.deadrooster.slate.android"
             android:exported="false" >
         </provider>
 
-        <activity android:name="com.deadrooster.slate.android.ActivityCategoryEntryList" >
-<!--              <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter> -->
-        </activity>
-        <activity
-            android:name="com.deadrooster.slate.android.ActivityEntry"
-            android:label="@string/title_activity_entry" >
-        </activity>
+        <service
+            android:name="com.deadrooster.slate.android.services.RefreshService"
+            android:icon="@drawable/ic_launcher"
+            android:label="@string/service_name" >
+        </service>
+
+        <receiver
+            android:name="com.deadrooster.slate.android.services.ScheduleReceiver" >
+            <intent-filter>
+                <action
+                    android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+        <receiver 
+            android:name="com.deadrooster.slate.android.services.StartReceiver">
+        </receiver>
 
         <activity
-            android:name="com.deadrooster.slate.android.REntryListActivity" >
+            android:name="com.deadrooster.slate.android.EntryListActivity" >
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action
+                    android:name="android.intent.action.MAIN" />
+                <category
+                    android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
-            android:name="com.deadrooster.slate.android.REntryDetailActivity" >
+            android:name="com.deadrooster.slate.android.EntryDetailActivity" >
         </activity>
+
     </application>
 
 </manifest>

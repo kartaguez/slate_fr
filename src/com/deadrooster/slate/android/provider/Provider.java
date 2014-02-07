@@ -165,9 +165,9 @@ public class Provider extends ContentProvider {
 				throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + uri);
 		}
 
-		getContext().getContentResolver().notifyChange(uri, null);
-		getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
-		getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
+//		getContext().getContentResolver().notifyChange(uri, null);
+//		getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
+//		getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
 
 		return count;
 	}
