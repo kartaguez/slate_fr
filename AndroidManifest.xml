@@ -27,7 +27,12 @@
         </provider>
 
         <service
-            android:name="com.deadrooster.slate.android.services.RefreshService"
+            android:name="com.deadrooster.slate.android.services.PerformRefreshService"
+            android:icon="@drawable/ic_launcher"
+            android:label="@string/service_name" >
+        </service>
+        <service
+            android:name="com.deadrooster.slate.android.services.TriggerRefreshService"
             android:icon="@drawable/ic_launcher"
             android:label="@string/service_name" >
         </service>
@@ -40,7 +45,7 @@
             </intent-filter>
         </receiver>
         <receiver 
-            android:name="com.deadrooster.slate.android.services.StartReceiver">
+            android:name="com.deadrooster.slate.android.services.ScheduledTriggerRefreshReceiver">
         </receiver>
 
         <activity

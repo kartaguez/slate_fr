@@ -1,37 +1,22 @@
 package com.deadrooster.slate.android.fragments;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.List;
-
 import android.app.Activity;
 import android.app.ListFragment;
 import android.app.LoaderManager;
-import android.content.ContentResolver;
-import android.content.ContentValues;
-import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Loader;
 import android.database.Cursor;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
 
-import com.deadrooster.slate.android.EntryListActivity;
 import com.deadrooster.slate.android.R;
 import com.deadrooster.slate.android.adapters.EntryListAdapter;
-import com.deadrooster.slate.android.http.RSSFileFetcher;
-import com.deadrooster.slate.android.model.Entry;
 import com.deadrooster.slate.android.model.Model.Entries;
-import com.deadrooster.slate.android.parser.SlateRSSParser;
 import com.deadrooster.slate.android.provider.Uris;
 import com.deadrooster.slate.android.util.Callbacks;
-import com.deadrooster.slate.android.util.RefreshCounter;
 
 public class EntryListFragment extends ListFragment implements LoaderManager.LoaderCallbacks<Cursor> {
 
@@ -57,18 +42,12 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		}
 	};
 
-	private Context context = null;
 	private Callbacks callbacks = null;
 	private int activatedPosition = ListView.INVALID_POSITION;
 	private int category = 0;
 	private EntryListAdapter adapter = null;
-	private RefreshCounter counter = null;
 	private boolean twoPane = false;
 	private boolean isActivable = true;
-
-	private ArrayList<HttpTask> httpTasks = new ArrayList<HttpTask>();
-	private ArrayList<ParseTask> parseTasks = new ArrayList<ParseTask>();
-	private SparseArray<List<Entry>> newEntries = new SparseArray<List<Entry>>();
 
 	public EntryListFragment() {
 	}
@@ -77,7 +56,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-		this.context = getActivity();
 		if (this.callbacks == null) {
 			this.callbacks = dummyCallbacks;
 		}
@@ -149,25 +127,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		getLoaderManager().restartLoader(0, null, this);
 	}
 
-	public void refreshData() {
-
-		// init refresh counter
-		if (this.counter != null) {
-			this.counter.deactivate();
-		}
-		RefreshCounter counter = new RefreshCounter(6);
-		this.counter = counter;
-
-		// fetch rss file
-		HttpTask task = null;
-		for (int i = 0; i < EntryListActivity.categories.size(); i++) {
-			task = new HttpTask(i, counter);
-			this.httpTasks.add(task);
-			task.execute();
-			counter.incrementRefresh();
-		}
-
-	}
 
 	@Override
 	public void onAttach(Activity activity) {
@@ -185,12 +144,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 	@Override
 	public void onDetach() {
 		super.onDetach();
-		for (HttpTask task : this.httpTasks) {
-			task.cancel(true);
-		}
-		for (ParseTask task : this.parseTasks) {
-			task.cancel(true);
-		}
 		this.callbacks = dummyCallbacks;
 	}
 
@@ -203,6 +156,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	private void selectActivatedPosition() {
 		if (isActivable) {
+			setActivatedPosition(this.activatedPosition);
 			callbackOnItemSelected(getListView().getItemIdAtPosition(this.activatedPosition));
 		}
 	}
@@ -229,173 +183,12 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	private void setActivatedPosition(int position) {
 		if (position == ListView.INVALID_POSITION) {
-			getListView().setItemChecked(activatedPosition, false);
+			getListView().setItemChecked(activatedPosition, true);
 		} else {
 			getListView().setItemChecked(position, true);
 		}
 
 		activatedPosition = position;
-	}
-
-	private void notifyRefreshDone(boolean isSuccess) {
-
-		if (callbacks instanceof EntryListActivity) {
-			((EntryListActivity) callbacks).finalizeRefreshBatch(isSuccess);
-		}
-	}
-
-	private void parseRssFile(String rssFileContent, int category, RefreshCounter counter) {
-		// parse rss file
-		ParseTask task = new ParseTask(category, counter);
-		this.parseTasks.add(task);
-		task.execute(rssFileContent);
-	}
-
-	private void updateEntriesDB(List<Entry> result, int category) {
-
-		if (this.context != null) {
-
-			ContentResolver cr = this.context.getContentResolver();
-	
-			// empty table
-			cr.delete(Uris.Entries.CONTENT_URI_ENTRIES, SELECTION_DELETE, new String[] {Integer.toString(category)});
-	
-			// generate content value
-			for (Entry entry : result) {
-				ContentValues values = new ContentValues();
-				values.put(Entries.TITLE, entry.getTitle());
-				values.put(Entries.CATEGORY, category);
-				values.put(Entries.DESCRIPTION, entry.getContent());
-				values.put(Entries.PREVIEW, entry.getPreview());
-				values.put(Entries.THUMBNAIL_URL, entry.getThumbnailUrl());
-				values.put(Entries.PUBLICATION_DATE, entry.getPublicationDate());
-				values.put(Entries.AUTHOR, entry.getAuthor());
-				this.context.getContentResolver().insert(Uris.Entries.CONTENT_URI_ENTRIES, values);
-			}
-		}
-
-	}
-
-	// AsyncTask for retrieving rss file.
-	private class HttpTask extends AsyncTask<Void, Integer, String> {
-
-		private int category;
-		private RefreshCounter counter;
-
-		public HttpTask(int category, RefreshCounter counter) {
-			super();
-			this.category = category;
-			this.counter = counter;
-		}
-
-		@Override
-		protected String doInBackground(Void... params) {
-
-			String rssFileContent = null;
-
-			String url = null;
-			switch (category) {
-			case 0:
-				url = URL_RSS_UNE;
-				break;
-			case 1:
-				url = URL_RSS_FRANCE;
-				break;
-			case 2:
-				url = URL_RSS_MONDE;
-				break;
-			case 3:
-				url = URL_RSS_ECONOMIE;
-				break;
-			case 4:
-				url = URL_RSS_CULTURE;
-				break;
-			case 5:
-				url = URL_RSS_LIFE;
-				break;
-			default:
-				break;
-			}
-
-			if (url != null) {
-				RSSFileFetcher fetcher = RSSFileFetcher.getInstance();
-				try {
-					rssFileContent = fetcher.fetch(url);
-				} catch (MalformedURLException e1) {
-					e1.printStackTrace();
-				}
-			}
-
-			return rssFileContent;
-		}
-
-		@Override
-		protected void onPostExecute(String result) {
-			super.onPostExecute(result);
-
-			if (result != null) {
-				if (adapter != null) {
-					adapter.clearCache(this.category);
-				}
-				httpTasks.remove(this);
-				parseRssFile(result, this.category, this.counter);
-			} else {
-				synchronized (this.counter) {
-					this.counter.decrementRefresh();
-					if (this.counter.isLast()){
-						notifyRefreshDone(false);
-					}
-				}
-			}
-		}
-
-	}
-
-	// AsyncTask for parsing rss file.
-	private class ParseTask extends AsyncTask<String, Integer, List<Entry>> {
-
-		private int category;
-		private RefreshCounter counter;
-
-		public ParseTask(int category, RefreshCounter counter) {
-			super();
-			this.category = category;
-			this.counter = counter;
-		}
-
-		@Override
-		protected List<Entry> doInBackground(String... rssFileContent) {
-
-			List<Entry> entries = null;
-
-			try {
-				SlateRSSParser parser = new SlateRSSParser();
-				entries = parser.parse(rssFileContent[0], this.category);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			return entries;
-
-		}
-
-		@Override
-		protected void onPostExecute(List<Entry> result) {
-			super.onPostExecute(result);
-			parseTasks.remove(this);
-			newEntries.put(this.category ,result);
-			synchronized (this.counter) {
-				this.counter.decrementRefresh();
-				if (this.counter.isLast()){
-					notifyRefreshDone(true);
-					for (int i = 0; i < newEntries.size(); i++) {
-						int key = newEntries.keyAt(i);
-						updateEntriesDB(newEntries.get(key), key);
-					}
-					newEntries.clear();
-				}
-			}
-		}
-
 	}
 
 	// loader methods

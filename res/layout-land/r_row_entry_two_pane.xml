@@ -4,5 +4,6 @@
     android:id="@+id/entry_title"
     style="@style/EntryRowTitleTwoPane"
    	android:lines="3"
-   	android:ellipsize="end">
+   	android:ellipsize="end"
+    android:background="@drawable/row_entry_two_pane_states">
 </TextView>

@@ -11,6 +11,7 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
 import com.deadrooster.slate.android.R;
+import com.deadrooster.slate.android.adapters.util.ImageCacheByPosition;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromDb;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromInternet;
 import com.deadrooster.slate.android.adapters.util.ViewWrapper;
@@ -22,7 +23,6 @@ public class EntryListAdapter extends SimpleCursorAdapter {
 	private int layout = 0;
 	private Cursor c = null;
 	private int[] to = null;
-	private SparseArray<SparseArray<Bitmap>> images = null;
 
 	public EntryListAdapter(Context context, int layout, Cursor c, String[] from, int[] to, int flags) {
 		super(context, layout, c, from, to, flags);
@@ -30,7 +30,6 @@ public class EntryListAdapter extends SimpleCursorAdapter {
 		this.layout = layout;
 		this.c = c;
 		this.to = to;
-		this.images = new SparseArray<SparseArray<Bitmap>>();
 	}
 
 	@Override
@@ -83,7 +82,7 @@ public class EntryListAdapter extends SimpleCursorAdapter {
 	private void loadImageViewData(int position, ViewWrapper wrapper, ImageView viewThumbnail, int category) {
 
 		Bitmap thumbnail = null;
-		SparseArray<Bitmap> categoryImages = this.images.get(category);
+		SparseArray<Bitmap> categoryImages = ImageCacheByPosition.getInstance().getImages().get(category);
 		if (categoryImages != null) {
 			thumbnail = categoryImages.get(position);
 		}
@@ -91,13 +90,11 @@ public class EntryListAdapter extends SimpleCursorAdapter {
 			viewThumbnail.setImageBitmap(DefaultImage.getInstance(this.context).getImage());
 			byte[] thumbnailData = this.c.getBlob(4);
 			if (thumbnailData == null) {
-				// TODO
-				LoadImageFromInternet imageTask = new LoadImageFromInternet(this.context, this.images, category, position, this.c.getLong(0), c.getString(5), viewThumbnail);
+				LoadImageFromInternet imageTask = new LoadImageFromInternet(this.context, ImageCacheByPosition.getInstance().getImages(), null, category, position, this.c.getLong(0), c.getString(5), viewThumbnail);
 				wrapper.setImageTask(imageTask);
 				imageTask.download();
 			} else {
-				// TODO
-				LoadImageFromDb loadImageTask = new LoadImageFromDb(this.images, category, position, thumbnailData, viewThumbnail);
+				LoadImageFromDb loadImageTask = new LoadImageFromDb(ImageCacheByPosition.getInstance().getImages(), null, category, position, this.c.getLong(0), thumbnailData, viewThumbnail);
 				wrapper.setLoadImageTask(loadImageTask);
 				loadImageTask.execute();
 			}
@@ -113,10 +110,4 @@ public class EntryListAdapter extends SimpleCursorAdapter {
 		return super.swapCursor(c);
 	}
 
-	public void clearCache(int category) {
-		if (this.images.get(category) != null) {
-			this.images.get(category).clear();
-			this.images.remove(category);
-		}
-	}
 }

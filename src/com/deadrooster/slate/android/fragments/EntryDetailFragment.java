@@ -1,11 +1,14 @@
 package com.deadrooster.slate.android.fragments;
 
+import java.util.HashMap;
+
 import android.annotation.SuppressLint;
 import android.app.Fragment;
 import android.app.LoaderManager;
 import android.content.CursorLoader;
 import android.content.Loader;
 import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,9 +18,10 @@ import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.deadrooster.slate.android.R;
 import com.deadrooster.slate.android.EntryDetailActivity;
 import com.deadrooster.slate.android.EntryListActivity;
+import com.deadrooster.slate.android.R;
+import com.deadrooster.slate.android.adapters.util.ImageCacheById;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromDb;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromInternet;
 import com.deadrooster.slate.android.model.Model.Entries;
@@ -141,12 +145,21 @@ public class EntryDetailFragment extends Fragment implements LoaderManager.Loade
 
 	private void loadImageViewData(byte[] data, String url, ImageView viewThumbnail, int category) {
 
-		if (data == null) {
-			LoadImageFromInternet imageTask = new LoadImageFromInternet(getActivity(), null, category, -1, c.getLong(0), url, viewThumbnail);
-			imageTask.download();
+		Bitmap thumbnail = null;
+		HashMap<Long, Bitmap> categoryImages = ImageCacheById.getInstance().getImages().get(category);
+		if (categoryImages != null) {
+			thumbnail = categoryImages.get(this.entryId);
+		}
+		if (thumbnail == null) {
+			if (data == null) {
+				LoadImageFromInternet imageTask = new LoadImageFromInternet(getActivity(), null, ImageCacheById.getInstance().getImages(), category, -1, c.getLong(0), url, viewThumbnail);
+				imageTask.download();
+			} else {
+				LoadImageFromDb loadImageTask = new LoadImageFromDb(null, ImageCacheById.getInstance().getImages(), category, -1, c.getLong(0), data, viewThumbnail);
+				loadImageTask.execute();
+			}
 		} else {
-			LoadImageFromDb loadImageTask = new LoadImageFromDb(null, category, -1, data, viewThumbnail);
-			loadImageTask.execute();
+			viewThumbnail.setImageBitmap(thumbnail);
 		}
 	}
 

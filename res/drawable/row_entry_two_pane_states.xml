@@ -1,0 +1,13 @@
+<selector
+	xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:drawable="@drawable/row_activated"
+        android:state_activated="true">
+    </item>
+
+    <item
+        android:drawable="@drawable/row_unactivated"
+    />
+
+</selector>

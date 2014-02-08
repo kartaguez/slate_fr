@@ -29,8 +29,6 @@ public class EntryDetailActivity extends GAActivity {
 		this.getActionBar().setTitle(title);
 
 		if (savedInstanceState == null) {
-			// Create the detail fragment and add it to the activity
-			// using a fragment transaction.
 			Bundle arguments = new Bundle();
 			arguments.putLong(EntryDetailFragment.ARG_ITEM_ID, getIntent().getLongExtra(EntryDetailFragment.ARG_ITEM_ID, -1));
 			EntryDetailFragment fragment = new EntryDetailFragment();

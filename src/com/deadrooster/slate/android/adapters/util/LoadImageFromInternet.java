@@ -5,6 +5,7 @@ import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashMap;
 
 import com.deadrooster.slate.android.util.DefaultImage;
 
@@ -20,14 +21,15 @@ import android.widget.ImageView;
 public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 
 	private static Context context;
-	private SparseArray<SparseArray<Bitmap>> images;
+	private SparseArray<SparseArray<Bitmap>> imagesByPosition;
+	private SparseArray<HashMap<Long, Bitmap>> imagesById;
 	private int category;
 	private int position;
 	private long entryId;
 	private String url;
 	private final WeakReference<ImageView> imageViewReference;
 
-	public LoadImageFromInternet(Context context, SparseArray<SparseArray<Bitmap>> images, int category, int position, long entryId, String url, ImageView imageView) {
+	public LoadImageFromInternet(Context context, SparseArray<SparseArray<Bitmap>> imagesByPosition, SparseArray<HashMap<Long, Bitmap>> imagesById, int category, int position, long entryId, String url, ImageView imageView) {
 		if (LoadImageFromInternet.context == null) {
 			synchronized(LoadImageFromInternet.class) {
 				if (LoadImageFromInternet.context == null) {
@@ -35,7 +37,8 @@ public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 				}
 			}
 		}
-		this.images = images;
+		this.imagesByPosition = imagesByPosition;
+		this.imagesById = imagesById;
 		this.category = category;
 		this.position = position;
 		this.entryId = entryId;
@@ -81,11 +84,17 @@ public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 			LoadImageFromInternet task = getImageTask(imageView);
 			if (this == task) {
 				imageView.setImageBitmap(bitmap);
-				if (this.images != null) {
-					if (this.images.get(category) == null) {
-						this.images.put(category, new SparseArray<Bitmap>());
+				if (this.imagesByPosition != null) {
+					if (this.imagesByPosition.get(category) == null) {
+						this.imagesByPosition.put(category, new SparseArray<Bitmap>());
 					}
-					this.images.get(category).put(position, bitmap);
+					this.imagesByPosition.get(category).put(position, bitmap);
+				}
+				if (this.imagesById != null) {
+					if (this.imagesById.get(category) == null) {
+						this.imagesById.put(category, new HashMap<Long, Bitmap>());
+					}
+					this.imagesById.get(category).put(entryId, bitmap);
 				}
 				updateEntryBitmap(bitmap);
 			}

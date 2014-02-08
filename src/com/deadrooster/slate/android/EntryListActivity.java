@@ -30,11 +30,16 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.deadrooster.slate.android.adapters.util.ImageCacheById;
+import com.deadrooster.slate.android.adapters.util.ImageCacheByPosition;
 import com.deadrooster.slate.android.fragments.EntryDetailFragment;
 import com.deadrooster.slate.android.fragments.EntryListFragment;
 import com.deadrooster.slate.android.ga.GAActivity;
+import com.deadrooster.slate.android.preferences.Preferences;
 import com.deadrooster.slate.android.provider.Uris;
-import com.deadrooster.slate.android.services.RefreshService;
+import com.deadrooster.slate.android.services.PerformRefreshService;
+import com.deadrooster.slate.android.services.ScheduleReceiver;
+import com.deadrooster.slate.android.services.TriggerRefreshService;
 import com.deadrooster.slate.android.tapstream.TapStreamImpl;
 import com.deadrooster.slate.android.util.Callbacks;
 import com.deadrooster.slate.android.util.ParcelableBoolean;
@@ -44,12 +49,9 @@ import com.tapstream.sdk.Tapstream;
 
 public class EntryListActivity extends GAActivity implements Callbacks, ActionBar.OnNavigationListener {
 
-	public static final String PREFS_NAME = "SlateFrPrefs";
 	public static final String CURRENT_CATEGORY = "current_category";
 
-	private static final String PREF_KEY_LAST_REFRESH_DATE = "last_refresh_date";
 	private static final String IS_REFRESHING = "is_refreshing";
-	private static final String LAST_REFRESH_ATTEMPT_DATE = "las_refresh_attempt_date";
 
 	private static final SimpleDateFormat refreshDateTimeFormat = new SimpleDateFormat("HH:mm", Locale.FRANCE);
 
@@ -60,10 +62,10 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	private int category = 0;
 	private boolean isRefreshing = false;
 	private long lastRefreshSuccessDate = -1;
-	private long lastRefreshAttemptDate = -1;
 
 	private ServiceConnection connection = new RefreshServiceConnection();
-	private RefreshCompletedReceiver receiver = new RefreshCompletedReceiver();
+	private RefreshTriggeredReceiver refreshRequestedReceiver = new RefreshTriggeredReceiver();
+	private RefreshCompletedReceiver refreshCompletedReceiver = new RefreshCompletedReceiver();
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -82,9 +84,6 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 
 		// set up the the action bar to show a dropdown list.
 		setUpActionBar();
-
-		// retrieve last refresh date
-		loadLastRefreshDate();
 	
 		// load state
 		if (savedInstanceState != null) {
@@ -94,11 +93,9 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 			if (savedInstanceState.containsKey(IS_REFRESHING)) {
 				this.isRefreshing = savedInstanceState.getBoolean(IS_REFRESHING);
 			}
-			if (savedInstanceState.containsKey(LAST_REFRESH_ATTEMPT_DATE)) {
-				this.lastRefreshAttemptDate = savedInstanceState.getLong(LAST_REFRESH_ATTEMPT_DATE);
-			}
-		} else {
-			this.isRefreshing = true;
+			// TODO : suppress refresh at launch
+//		} else {
+//			this.isRefreshing = true;
 		}
 
 		// load required fragments
@@ -114,6 +111,9 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 			getFragmentManager().beginTransaction().replace(R.id.entry_list_container, fragment).commit();
 		}
 
+		// set refresh schedule
+		ScheduleReceiver.setScheduleAheadOfReboot(this);
+
 	}
 
 	@Override
@@ -122,7 +122,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 
 		// refresh if needed
 		if (this.isRefreshing) {
-			launchRefreshBatch();
+			launchRefreshBatch(false);
 		}
 	}
 
@@ -130,9 +130,11 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	public void onPause() {
 		stopRotatingRefreshIcon();
 
-		// with service
+		// with services
 		unbindService(connection);
-		unregisterReceiver(this.receiver);
+
+		unregisterReceiver(this.refreshRequestedReceiver);
+		unregisterReceiver(this.refreshCompletedReceiver);
 
 		super.onPause();
 	}
@@ -141,10 +143,12 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	protected void onResume() {
 		super.onResume();
 
-		// with service
-		Intent i = new Intent(this, RefreshService.class);
+		// with services
+		registerReceiver(refreshRequestedReceiver, new IntentFilter(TriggerRefreshService.NOTIFICATION));
+		registerReceiver(refreshCompletedReceiver, new IntentFilter(PerformRefreshService.NOTIFICATION));
+
+		Intent i = new Intent(this, PerformRefreshService.class);
 		bindService(i, this.connection, Context.BIND_AUTO_CREATE);
-		registerReceiver(receiver, new IntentFilter(RefreshService.NOTIFICATION));
 
 	}
 
@@ -153,7 +157,6 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		super.onSaveInstanceState(outState);
 		outState.putInt(CURRENT_CATEGORY, this.category);
 		outState.putBoolean(IS_REFRESHING, this.isRefreshing);
-		outState.putLong(LAST_REFRESH_ATTEMPT_DATE, this.lastRefreshAttemptDate);
 	}
 
 	@Override
@@ -174,9 +177,11 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	}
 
 	private void updateLastRefreshDate(Menu menu) {
-		MenuItem lastRefreshDateItem = menu.getItem(0);
 
+		MenuItem lastRefreshDateItem = menu.getItem(0);
 		TextView actionLastRefreshTime = (TextView) lastRefreshDateItem.getActionView();
+
+		loadLastRefreshDate();
 
 		if (this.lastRefreshSuccessDate == -1) {
 			actionLastRefreshTime.setText("-");
@@ -272,7 +277,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		int itemId = item.getItemId();
 		switch (itemId) {
 		case R.id.refresh:
-			launchRefreshBatch();
+			launchRefreshBatch(false);
 			break;
 		default:
 			break;
@@ -280,28 +285,19 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		return super.onOptionsItemSelected(item);
 	}
 
-	private void launchRefreshBatch() {
+	private void launchRefreshBatch(boolean alreadyLaunchedInBackground) {
 		fireRefreshEvent();
 		startRotateRefreshIcon();
-		this.lastRefreshAttemptDate = new SlateCalendar().getTimeInMillis();
 
-		// TODO
-//		((EntryListFragment) getFragmentManager().findFragmentById(R.id.entry_list_container)).refreshData();
-		Intent i = new Intent(this, RefreshService.class);
-		startService(i);
+		if (!alreadyLaunchedInBackground) {
+			Intent i = new Intent(this, PerformRefreshService.class);
+			startService(i);
+		}
 	}
 
 	private void loadLastRefreshDate() {
-		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-	    this.lastRefreshSuccessDate = settings.getLong(PREF_KEY_LAST_REFRESH_DATE, -1);
-	}
-
-	public void saveLastRefreshDate() {
-		this.lastRefreshSuccessDate = this.lastRefreshAttemptDate;
-		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-		SharedPreferences.Editor editor = settings.edit();
-	    editor.putLong(PREF_KEY_LAST_REFRESH_DATE, this.lastRefreshSuccessDate);
-	    editor.commit();
+		SharedPreferences settings = getSharedPreferences(Preferences.PREFS_NAME, 0);
+	    this.lastRefreshSuccessDate = settings.getLong(Preferences.PREF_KEY_LAST_REFRESH_DATE, -1);
 	}
 
 	/**
@@ -376,6 +372,8 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 
 		this.isRefreshing = true;
 
+		stopRotatingRefreshIcon();
+
 		LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		ImageView iv = (ImageView) inflater.inflate(R.layout.action_menu_refresh, null);
 
@@ -409,13 +407,13 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		stopRotatingRefreshIcon();
 
 	    if (isSuccess) {
-	    	saveLastRefreshDate();
 
 	    	if (categorySuccesses != null) {
 		    	for (int i = 0; i < categorySuccesses.size(); i++) {
 		    		int curCategory = categorySuccesses.keyAt(i);
 		    		if (categorySuccesses.get(curCategory).getBool()) {
-		    			((EntryListFragment) getFragmentManager().findFragmentById(R.id.entry_list_container)).getAdapter().clearCache(curCategory);
+		    			ImageCacheByPosition.getInstance().clear(curCategory);
+		    			ImageCacheById.getInstance().clear(curCategory);
 		    		}
 		    	}
 	    	}
@@ -456,14 +454,23 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 
 	};
 
+	private class RefreshTriggeredReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			launchRefreshBatch(true);
+		}
+		
+	}
+
 	private class RefreshCompletedReceiver extends BroadcastReceiver {
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
 
-			boolean isRefreshSuccess = intent.getBooleanExtra(RefreshService.REFRESH_SUCCESSFUL, false);
+			boolean isRefreshSuccess = intent.getBooleanExtra(PerformRefreshService.REFRESH_SUCCESSFUL, false);
 			Bundle bundle = intent.getExtras();
-			SparseArray<ParcelableBoolean> categorySuccesses = bundle.getSparseParcelableArray(RefreshService.REFRESH_SUCCESSFUL_PER_CATEGORY);
+			SparseArray<ParcelableBoolean> categorySuccesses = bundle.getSparseParcelableArray(PerformRefreshService.REFRESH_SUCCESSFUL_PER_CATEGORY);
 			finalizeRefreshBatch(isRefreshSuccess, categorySuccesses);
 
 		}
