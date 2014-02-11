@@ -15,6 +15,7 @@ import android.util.Xml;
 
 import com.deadrooster.slate.android.model.Entry;
 import com.deadrooster.slate.android.model.Model.Entries.Tags;
+import com.deadrooster.slate.android.util.EncodingConverter;
 
 public class SlateRSSParser {
 
@@ -237,6 +238,7 @@ public class SlateRSSParser {
 			description = description.replace(value, cleanValue);
 		}
 
+		description = EncodingConverter.toUTF8(description);
 		return description;
 	}
 
@@ -255,6 +257,7 @@ public class SlateRSSParser {
 		pubDate = readText(parser);
 		parser.require(XmlPullParser.END_TAG, NAMESPACE, Tags.PUBDATE);
 
+		pubDate = EncodingConverter.readAsUTF8(pubDate);
 		return pubDate;
 	}
 

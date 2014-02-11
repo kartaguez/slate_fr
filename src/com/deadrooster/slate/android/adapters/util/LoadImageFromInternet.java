@@ -21,15 +21,12 @@ import android.widget.ImageView;
 public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 
 	private static Context context;
-	private SparseArray<SparseArray<Bitmap>> imagesByPosition;
-	private SparseArray<HashMap<Long, Bitmap>> imagesById;
 	private int category;
-	private int position;
 	private long entryId;
 	private String url;
 	private final WeakReference<ImageView> imageViewReference;
 
-	public LoadImageFromInternet(Context context, SparseArray<SparseArray<Bitmap>> imagesByPosition, SparseArray<HashMap<Long, Bitmap>> imagesById, int category, int position, long entryId, String url, ImageView imageView) {
+	public LoadImageFromInternet(Context context, int category, long entryId, String url, ImageView imageView) {
 		if (LoadImageFromInternet.context == null) {
 			synchronized(LoadImageFromInternet.class) {
 				if (LoadImageFromInternet.context == null) {
@@ -37,10 +34,7 @@ public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 				}
 			}
 		}
-		this.imagesByPosition = imagesByPosition;
-		this.imagesById = imagesById;
 		this.category = category;
-		this.position = position;
 		this.entryId = entryId;
 		this.url = url;
 		this.imageViewReference = new WeakReference<ImageView>(imageView);
@@ -84,17 +78,12 @@ public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 			LoadImageFromInternet task = getImageTask(imageView);
 			if (this == task) {
 				imageView.setImageBitmap(bitmap);
-				if (this.imagesByPosition != null) {
-					if (this.imagesByPosition.get(category) == null) {
-						this.imagesByPosition.put(category, new SparseArray<Bitmap>());
+				SparseArray<HashMap<Long, Bitmap>> imageCacheById = ImageCacheById.getInstance().getImages();
+				if (imageCacheById != null) {
+					if (imageCacheById.get(category) == null) {
+						imageCacheById.put(category, new HashMap<Long, Bitmap>());
 					}
-					this.imagesByPosition.get(category).put(position, bitmap);
-				}
-				if (this.imagesById != null) {
-					if (this.imagesById.get(category) == null) {
-						this.imagesById.put(category, new HashMap<Long, Bitmap>());
-					}
-					this.imagesById.get(category).put(entryId, bitmap);
+					imageCacheById.get(category).put(entryId, bitmap);
 				}
 				updateEntryBitmap(bitmap);
 			}

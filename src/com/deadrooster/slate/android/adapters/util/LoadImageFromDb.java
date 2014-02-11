@@ -11,20 +11,14 @@ import android.widget.ImageView;
 
 public class LoadImageFromDb extends AsyncTask<String, Integer, Bitmap> {
 
-	private SparseArray<SparseArray<Bitmap>> imagesByPosition;
-	private SparseArray<HashMap<Long, Bitmap>> imagesById;
 	private int category;
-	private int position;
 	private long entryId;
 	private byte[] thumbnailData;
 	private final WeakReference<ImageView> imageViewReference;
 	private Bitmap bitmap;
 
-	public LoadImageFromDb(SparseArray<SparseArray<Bitmap>> imagesByPosition, SparseArray<HashMap<Long, Bitmap>> imagesById, int category, int position, long entryId, byte[] thumbnailData, ImageView viewThumbnail) {
-		this.imagesByPosition = imagesByPosition;
-		this.imagesById = imagesById;
+	public LoadImageFromDb(int category, long entryId, byte[] thumbnailData, ImageView viewThumbnail) {
 		this.category = category;
-		this.position = position;
 		this.entryId = entryId;
 		this.thumbnailData = thumbnailData;
 		this.imageViewReference = new WeakReference<ImageView>(viewThumbnail);
@@ -44,17 +38,12 @@ public class LoadImageFromDb extends AsyncTask<String, Integer, Bitmap> {
 		ImageView imageView = this.imageViewReference.get();
 		if (imageView != null) {
 			imageView.setImageBitmap(this.bitmap);
-			if (this.imagesByPosition != null) {
-				if (this.imagesByPosition.get(category) == null) {
-					this.imagesByPosition.put(category, new SparseArray<Bitmap>());
+			SparseArray<HashMap<Long, Bitmap>> imageCacheById = ImageCacheById.getInstance().getImages();
+			if (imageCacheById != null) {
+				if (imageCacheById.get(category) == null) {
+					imageCacheById.put(category, new HashMap<Long, Bitmap>());
 				}
-				this.imagesByPosition.get(category).put(position, bitmap);
-			}
-			if (this.imagesById != null) {
-				if (this.imagesById.get(category) == null) {
-					this.imagesById.put(category, new HashMap<Long, Bitmap>());
-				}
-				this.imagesById.get(category).put(entryId, bitmap);
+				imageCacheById.get(category).put(entryId, bitmap);
 			}
 		}
 	}

@@ -1,9 +1,10 @@
 package com.deadrooster.slate.android.adapters;
 
+import java.util.HashMap;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -11,7 +12,7 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
 import com.deadrooster.slate.android.R;
-import com.deadrooster.slate.android.adapters.util.ImageCacheByPosition;
+import com.deadrooster.slate.android.adapters.util.ImageCacheById;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromDb;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromInternet;
 import com.deadrooster.slate.android.adapters.util.ViewWrapper;
@@ -82,19 +83,20 @@ public class EntryListAdapter extends SimpleCursorAdapter {
 	private void loadImageViewData(int position, ViewWrapper wrapper, ImageView viewThumbnail, int category) {
 
 		Bitmap thumbnail = null;
-		SparseArray<Bitmap> categoryImages = ImageCacheByPosition.getInstance().getImages().get(category);
+		long entryId = this.c.getLong(0);
+		HashMap<Long, Bitmap> categoryImages = ImageCacheById.getInstance().getImages().get(category);
 		if (categoryImages != null) {
-			thumbnail = categoryImages.get(position);
+			thumbnail = categoryImages.get(entryId);
 		}
 		if (thumbnail == null) {
 			viewThumbnail.setImageBitmap(DefaultImage.getInstance(this.context).getImage());
 			byte[] thumbnailData = this.c.getBlob(4);
 			if (thumbnailData == null) {
-				LoadImageFromInternet imageTask = new LoadImageFromInternet(this.context, ImageCacheByPosition.getInstance().getImages(), null, category, position, this.c.getLong(0), c.getString(5), viewThumbnail);
+				LoadImageFromInternet imageTask = new LoadImageFromInternet(this.context, category, entryId, c.getString(5), viewThumbnail);
 				wrapper.setImageTask(imageTask);
 				imageTask.download();
 			} else {
-				LoadImageFromDb loadImageTask = new LoadImageFromDb(ImageCacheByPosition.getInstance().getImages(), null, category, position, this.c.getLong(0), thumbnailData, viewThumbnail);
+				LoadImageFromDb loadImageTask = new LoadImageFromDb(category, entryId, thumbnailData, viewThumbnail);
 				wrapper.setLoadImageTask(loadImageTask);
 				loadImageTask.execute();
 			}

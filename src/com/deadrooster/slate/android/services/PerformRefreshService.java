@@ -12,10 +12,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Binder;
-import android.os.Bundle;
 import android.os.IBinder;
 import android.util.SparseArray;
 
+import com.deadrooster.slate.android.adapters.util.ImageCacheById;
 import com.deadrooster.slate.android.http.RSSFileFetcher;
 import com.deadrooster.slate.android.model.Entry;
 import com.deadrooster.slate.android.model.Model.Entries;
@@ -36,8 +36,6 @@ public class PerformRefreshService extends Service {
 	public static final String URL_RSS_LIFE = "http://www.slate.fr/rss/android/life";
 
 	public static final String NOTIFICATION = "com.deadrooster.slate.android.refresh.completed";
-	public static final String REFRESH_SUCCESSFUL = "refresh_successful";
-	public static final String REFRESH_SUCCESSFUL_PER_CATEGORY = "refresh_successful_per_category";
 
 	public static final String[] PROJECTION = new String[] {Entries._ID, Entries.CATEGORY, Entries.TITLE, Entries.PREVIEW, Entries.THUMBNAIL_DATA, Entries.THUMBNAIL_URL};
 	public static final String SELECTION = "((" + Entries.TITLE + " != '') and (" + Entries.CATEGORY + " = ?))";
@@ -51,25 +49,29 @@ public class PerformRefreshService extends Service {
 	private SparseArray<List<Entry>> newEntries = new SparseArray<List<Entry>>();
 	private boolean globalSuccess = false;
 	private SparseArray<ParcelableBoolean> successes = new SparseArray<ParcelableBoolean>();
+	private boolean refreshInProgress = false;
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 
-		// init refresh counter
-		this.globalSuccess = false;
-		if (this.counter != null) {
-			this.counter.deactivate();
-		}
-		RefreshCounter counter = new RefreshCounter(6);
-		this.counter = counter;
-
-		// fetch rss file
-		HttpTask task = null;
-		for (int i = 0; i < 6; i++) {
-			task = new HttpTask(i, counter);
-			this.httpTasks.add(task);
-			task.execute();
-			counter.incrementRefresh();
+		if (!refreshInProgress) {
+			this.refreshInProgress = true;
+			// init refresh counter
+			this.globalSuccess = false;
+			if (this.counter != null) {
+				this.counter.deactivate();
+			}
+			RefreshCounter counter = new RefreshCounter(6);
+			this.counter = counter;
+	
+			// fetch rss file
+			HttpTask task = null;
+			for (int i = 0; i < 6; i++) {
+				task = new HttpTask(i, counter);
+				this.httpTasks.add(task);
+				task.execute();
+				counter.incrementRefresh();
+			}
 		}
 		return Service.START_NOT_STICKY;
 	}
@@ -80,11 +82,23 @@ public class PerformRefreshService extends Service {
 			saveLastRefreshDate();
 		}
 
+		this.refreshInProgress = false;
+
+    	if (this.successes != null) {
+	    	for (int i = 0; i < this.successes.size(); i++) {
+	    		int curCategory = this.successes.keyAt(i);
+	    		if (this.successes.get(curCategory).getBool()) {
+	    			ImageCacheById.getInstance().clear(curCategory);
+	    		}
+	    	}
+    	}
+
+	    if (this.globalSuccess) {
+			getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
+			getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
+	    }
+
 		Intent i = new Intent(NOTIFICATION);
-		Bundle bundle = new Bundle();
-		bundle.putSparseParcelableArray(PerformRefreshService.REFRESH_SUCCESSFUL_PER_CATEGORY, this.successes);
-		bundle.putBoolean(PerformRefreshService.REFRESH_SUCCESSFUL, this.globalSuccess);
-		i.putExtras(bundle);
 		sendBroadcast(i);
 
 	}
@@ -118,7 +132,6 @@ public class PerformRefreshService extends Service {
 	}
 
 	private void updateEntriesDB(List<Entry> result, int category) {
-
 
 		ContentResolver cr = getContentResolver();
 
@@ -204,7 +217,7 @@ public class PerformRefreshService extends Service {
 				synchronized (this.counter) {
 					this.counter.decrementRefresh();
 					successes.put(this.category, new ParcelableBoolean(false));
-					if (this.counter.isLast()){
+					if (this.counter.isLast() && !globalSuccess){
 						notifyRefreshDone();
 					}
 				}
@@ -244,18 +257,25 @@ public class PerformRefreshService extends Service {
 		protected void onPostExecute(List<Entry> result) {
 			super.onPostExecute(result);
 			parseTasks.remove(this);
-			newEntries.put(this.category ,result);
-			synchronized (this.counter) {
-				this.counter.decrementRefresh();
+			if (result != null) {
 				globalSuccess = true;
 				successes.put(this.category, new ParcelableBoolean(true));
+				newEntries.put(this.category, result);
+			} else {
+				successes.put(this.category, new ParcelableBoolean(false));
+			}
+				
+			synchronized (this.counter) {
+				this.counter.decrementRefresh();
 				if (this.counter.isLast()) {
-					notifyRefreshDone();
 					for (int i = 0; i < newEntries.size(); i++) {
 						int key = newEntries.keyAt(i);
-						updateEntriesDB(newEntries.get(key), key);
+						if (successes.get(key).getBool()) {
+							updateEntriesDB(newEntries.get(key), key);
+						}
 					}
 					newEntries.clear();
+					notifyRefreshDone();
 				}
 			}
 		}

@@ -18,9 +18,9 @@ import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.deadrooster.slate.android.EntryDetailActivity;
-import com.deadrooster.slate.android.EntryListActivity;
 import com.deadrooster.slate.android.R;
+import com.deadrooster.slate.android.activities.EntryDetailActivity;
+import com.deadrooster.slate.android.activities.EntryListActivity;
 import com.deadrooster.slate.android.adapters.util.ImageCacheById;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromDb;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromInternet;
@@ -44,7 +44,7 @@ public class EntryDetailFragment extends Fragment implements LoaderManager.Loade
 	public static final String SELECTION = "((" + Entries._ID + " == ?))";
 
 	private static final String MIME_TYPE = "text/html";
-	private static final String ENCODING = "iso-8859-1";
+	private static final String ENCODING = "utf-8";
 
 	private long entryId;
 	ScrollView scrollView;
@@ -152,10 +152,10 @@ public class EntryDetailFragment extends Fragment implements LoaderManager.Loade
 		}
 		if (thumbnail == null) {
 			if (data == null) {
-				LoadImageFromInternet imageTask = new LoadImageFromInternet(getActivity(), null, ImageCacheById.getInstance().getImages(), category, -1, c.getLong(0), url, viewThumbnail);
+				LoadImageFromInternet imageTask = new LoadImageFromInternet(getActivity(), category, this.entryId, url, viewThumbnail);
 				imageTask.download();
 			} else {
-				LoadImageFromDb loadImageTask = new LoadImageFromDb(null, ImageCacheById.getInstance().getImages(), category, -1, c.getLong(0), data, viewThumbnail);
+				LoadImageFromDb loadImageTask = new LoadImageFromDb(category, this.entryId, data, viewThumbnail);
 				loadImageTask.execute();
 			}
 		} else {
