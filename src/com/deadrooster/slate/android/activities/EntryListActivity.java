@@ -83,7 +83,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		setUpActionBar();
 
 		// set refresh schedule
-		boolean scheduleBeingSet = ScheduleRefreshReceiver.setScheduleAheadOfReboot(this);
+		boolean scheduleBeingSet = ScheduleRefreshReceiver.setScheduleAfterFirstLaunch(this);
 
 		// load state
 		if (savedInstanceState != null) {
@@ -114,6 +114,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 
 	@Override
 	public void onStart() {
+
 		super.onStart();
 
 		// refresh if needed

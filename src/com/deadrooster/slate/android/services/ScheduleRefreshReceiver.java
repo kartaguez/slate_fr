@@ -23,25 +23,23 @@ public class ScheduleRefreshReceiver extends BroadcastReceiver {
 		setStartSchedule(context, true);
 	}
 
-	public static boolean setScheduleAheadOfReboot(Context context) {
+	public static boolean setScheduleAfterFirstLaunch(Context context) {
 
 		SharedPreferences settings = context.getSharedPreferences(Preferences.PREFS_NAME, 0);
-	    boolean scheduleIsSet = settings.getBoolean(Preferences.PREF_KEY_IS_SCHEDULE_SET, false);
+	    boolean scheduleIsSet = settings.getBoolean(Preferences.PREF_KEY_SCHEDULE_IS_SET, false);
 	    int lastVersionUsed = settings.getInt(Preferences.PREF_KEY_LAST_VERSION_USED, -1);
 	    int currentVersion = 0;
 	    try {
 	    	currentVersion = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionCode;
-			SharedPreferences.Editor editor = settings.edit();
-		    editor.putInt(Preferences.PREF_KEY_LAST_VERSION_USED, currentVersion);
-		    editor.commit();
 		} catch (NameNotFoundException e) {
 			e.printStackTrace();
 		}
 
 	    if (!scheduleIsSet || currentVersion != lastVersionUsed) {
-	    	setStartSchedule(context, false);
 			SharedPreferences.Editor editor = settings.edit();
-		    editor.putBoolean(Preferences.PREF_KEY_IS_SCHEDULE_SET, true);
+		    editor.putInt(Preferences.PREF_KEY_LAST_VERSION_USED, currentVersion);
+	    	setStartSchedule(context, false);
+		    editor.putBoolean(Preferences.PREF_KEY_SCHEDULE_IS_SET, true);
 		    editor.commit();
 		    return true;
 	    } else {
@@ -66,7 +64,12 @@ public class ScheduleRefreshReceiver extends BroadcastReceiver {
 		if (!isAfterBoot) {
 			LaunchRefreshingBatchReceiver.launchRefreshingBatch(context);
 		}
-		
+
+		SharedPreferences settings = context.getSharedPreferences(Preferences.PREFS_NAME, 0);
+		SharedPreferences.Editor editor = settings.edit();
+	    editor.putBoolean(Preferences.PREF_KEY_SCHEDULE_IS_SET, true);
+	    editor.commit();
+
 	}
 
 }
