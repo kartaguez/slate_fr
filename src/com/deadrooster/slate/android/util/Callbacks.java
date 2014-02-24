@@ -9,5 +9,5 @@ public interface Callbacks {
 	/**
 	 * Callback for when an item has been selected.
 	 */
-	public void onItemSelected(long id);
+	public void onItemSelected(long id, int position);
 }

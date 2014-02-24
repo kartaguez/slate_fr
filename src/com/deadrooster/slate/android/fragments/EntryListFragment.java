@@ -3,20 +3,29 @@ package com.deadrooster.slate.android.fragments;
 import android.app.Activity;
 import android.app.ListFragment;
 import android.app.LoaderManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.CursorLoader;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.Loader;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
 
 import com.deadrooster.slate.android.R;
+import com.deadrooster.slate.android.activities.EntryListActivity;
 import com.deadrooster.slate.android.adapters.EntryListAdapter;
+import com.deadrooster.slate.android.adapters.util.LoadNewDataTask;
 import com.deadrooster.slate.android.model.Model.Entries;
 import com.deadrooster.slate.android.provider.Uris;
 import com.deadrooster.slate.android.util.Callbacks;
+import com.deadrooster.slate.android.util.Constants;
 
 public class EntryListFragment extends ListFragment implements LoaderManager.LoaderCallbacks<Cursor> {
 
@@ -38,7 +47,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	private static Callbacks dummyCallbacks = new Callbacks() {
 		@Override
-		public void onItemSelected(long id) {
+		public void onItemSelected(long id, int position) {
 		}
 	};
 
@@ -46,14 +55,20 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 	private int activatedPosition = ListView.INVALID_POSITION;
 	private int category = 0;
 	private EntryListAdapter adapter = null;
+	private CursorLoader cursorLoader = null;
 	private boolean twoPane = false;
 	private boolean isActivable = true;
+	private long[] entryIds;
+
+	private DataSwappingIsOverReceiver dataSwappingIsOverReceiver = new DataSwappingIsOverReceiver();
+	private boolean isWaitingForSwappingEnd = false;
 
 	public EntryListFragment() {
 	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
+		Log.d(Constants.TAG, "EntryListFragment: onCreate");
 		super.onCreate(savedInstanceState);
 
 		if (this.callbacks == null) {
@@ -62,17 +77,35 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 		// set up the the action bar to show a dropdown list.
 		this.category = 0;
+		if (savedInstanceState != null) {
+			if (savedInstanceState.containsKey(EntryListActivity.CURRENT_CATEGORY)) {
+				this.category = savedInstanceState.getInt(EntryListActivity.CURRENT_CATEGORY);
+			}
+		}
 
 	}
 
 	@Override
+	public void onActivityCreated(Bundle savedInstanceState) {
+		Log.d(Constants.TAG, "EntryListFragment: onActivityCreated");
+		super.onActivityCreated(savedInstanceState);
+		// init adapter
+		initAdapter();
+
+		// init loader
+		initLoader();
+	}
+
+	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+		Log.d(Constants.TAG, "EntryListFragment: onCreateView");
 		View rootView = inflater.inflate(R.layout.r_fragment_entry_list, container, false);
 		return rootView;
 	}
 
 	@Override
 	public void onViewCreated(View view, Bundle savedInstanceState) {
+		Log.d(Constants.TAG, "EntryListFragment: onViewCreated");
 		super.onViewCreated(view, savedInstanceState);
 
 		getListView().setEmptyView(view.findViewById(R.id.empty));
@@ -81,12 +114,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		if (getArguments().containsKey(ARG_TWO_PANE)) {
 			this.twoPane = getArguments().getBoolean(ARG_TWO_PANE);
 		}
-
-		// init adapter
-		initAdapter();
-
-		// init loader
-		initLoader();
 
 		// Restore the previously serialized activated item position.
 		if (this.twoPane) {
@@ -99,37 +126,19 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	}
 
-	// init
-	private void initAdapter() {
-
-		String[] fromColumns = new String[] {Entries.TITLE, Entries.PREVIEW, Entries.THUMBNAIL_DATA, Entries.THUMBNAIL_URL};
-		int layoutId = R.layout.r_row_entry_one_pane;
-		int[] toViews = new int[] {R.id.entry_title, R.id.entry_preview, R.id.entry_thumbnail};
-
-		if (this.twoPane) {
-			layoutId = R.layout.r_row_entry_two_pane;
-			toViews = new int[] {R.id.entry_title};
+	@Override
+	public void onSaveInstanceState(Bundle outState) {
+		Log.d(Constants.TAG, "EntryListFragment: onSaveInstanceState");
+		super.onSaveInstanceState(outState);
+		if (activatedPosition != ListView.INVALID_POSITION) {
+			outState.putInt(STATE_ACTIVATED_POSITION, activatedPosition);
 		}
-
-		this.adapter = new EntryListAdapter(getActivity(), layoutId, null, fromColumns, toViews, 0);
-		setListAdapter(this.adapter);
+		outState.putInt(EntryListActivity.CURRENT_CATEGORY, this.category);
 	}
-
-	private void initLoader() {
-		getLoaderManager().initLoader(0, null, this);
-	}
-
-	public void switchCategory(int category) {
-		this.isActivable = false;
-		this.category = category;
-		this.activatedPosition = 0;
-		getListView().setSelection(0);
-		getLoaderManager().restartLoader(0, null, this);
-	}
-
 
 	@Override
 	public void onAttach(Activity activity) {
+		Log.d(Constants.TAG, "EntryListFragment: onAttach");
 		super.onAttach(activity);
 
 		// Activities containing this fragment must implement its callbacks.
@@ -143,34 +152,79 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	@Override
 	public void onDetach() {
+		Log.d(Constants.TAG, "EntryListFragment: onDetach");
 		super.onDetach();
 		this.callbacks = dummyCallbacks;
 	}
 
 	@Override
+	public void onResume() {
+		Log.d(Constants.TAG, "EntryListFragment: onResume");
+		super.onResume();
+		LocalBroadcastManager.getInstance(getActivity()).registerReceiver(this.dataSwappingIsOverReceiver, new IntentFilter(LoadNewDataTask.IN_PROGRESS));
+	}
+
+	@Override
+	public void onPause() {
+		Log.d(Constants.TAG, "EntryListFragment: onPause");
+		super.onPause();
+		this.isWaitingForSwappingEnd = false;
+		LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(this.dataSwappingIsOverReceiver);
+	}
+
+	// init
+	private void initAdapter() {
+		Log.d(Constants.TAG, "EntryListFragment: initAdapter");
+		String[] fromColumns = new String[] {Entries.TITLE, Entries.PREVIEW, Entries.THUMBNAIL_DATA, Entries.THUMBNAIL_URL};
+		int layoutId = R.layout.r_row_entry_one_pane;
+		int[] toViews = new int[] {R.id.entry_title, R.id.entry_preview, R.id.entry_thumbnail};
+
+		if (this.twoPane) {
+			layoutId = R.layout.r_row_entry_two_pane;
+			toViews = new int[] {R.id.entry_title};
+		}
+
+		this.adapter = new EntryListAdapter(getActivity(), layoutId, null, fromColumns, toViews, 0);
+		setListAdapter(this.adapter);
+
+	}
+
+	private void initLoader() {
+		Log.d(Constants.TAG, "EntryListFragment: initLoader");
+		getLoaderManager().initLoader(0, null, this);
+	}
+
+	public void switchCategory(int category) {
+		Log.d(Constants.TAG, "EntryListFragment: switchCategory to " + category);
+		this.isActivable = false;
+		this.category = category;
+		this.activatedPosition = 0;
+		getListView().setSelection(0);
+		Log.d(Constants.TAG, "EntryListFragment: restartLoader");
+		getLoaderManager().restartLoader(0, null, this);
+	}
+
+	@Override
 	public void onListItemClick(ListView listView, View view, int position, long id) {
+		Log.d(Constants.TAG, "EntryListFragment: onListItemClick: position: " + position + ", id: " + id);
 		super.onListItemClick(listView, view, position, id);
 		setActivatedPosition(position);
-		this.callbacks.onItemSelected(id);
+		this.callbacks.onItemSelected(getListView().getItemIdAtPosition(this.activatedPosition), this.activatedPosition);
+	}
+
+	private void propagateItemClick() {
+		this.callbacks.onItemSelected(getListView().getItemIdAtPosition(this.activatedPosition), this.activatedPosition);
 	}
 
 	private void selectActivatedPosition() {
 		if (isActivable) {
 			setActivatedPosition(this.activatedPosition);
-			callbackOnItemSelected(getListView().getItemIdAtPosition(this.activatedPosition));
+			callbackOnItemSelected(getListView().getItemIdAtPosition(this.activatedPosition), this.activatedPosition);
 		}
 	}
 
-	private void callbackOnItemSelected(long id) {
-		callbacks.onItemSelected(id);
-	}
-
-	@Override
-	public void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-		if (activatedPosition != ListView.INVALID_POSITION) {
-			outState.putInt(STATE_ACTIVATED_POSITION, activatedPosition);
-		}
+	private void callbackOnItemSelected(long id, int position) {
+		callbacks.onItemSelected(id, position);
 	}
 
 	/**
@@ -183,22 +237,26 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	private void setActivatedPosition(int position) {
 		if (position == ListView.INVALID_POSITION) {
-			getListView().setItemChecked(activatedPosition, true);
+			getListView().setItemChecked(this.activatedPosition, true);
 		} else {
 			getListView().setItemChecked(position, true);
 		}
 
-		activatedPosition = position;
+		this.activatedPosition = position;
 	}
 
 	// loader methods
 	@Override
 	public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-		return new CursorLoader(getActivity(), Uris.Entries.CONTENT_URI_ENTRIES, PROJECTION, SELECTION, new String[] {Integer.toString(this.category)}, null);
+		Log.d(Constants.TAG, "EntryListFragment: onCreateLoader");
+		this.cursorLoader = new CursorLoader(getActivity(), Uris.Entries.CONTENT_URI_ENTRIES, PROJECTION, SELECTION, new String[] {Integer.toString(this.category)}, null);
+		return this.cursorLoader;
 	}
 
 	@Override
 	public void onLoadFinished(Loader<Cursor> loader, Cursor c) {
+		Log.d(Constants.TAG, "EntryListFragment: onLoadFinished");
+		loadEntryIds(c);
 		this.adapter.swapCursor(c);
 		this.isActivable = true;
 		if (this.twoPane) {
@@ -206,13 +264,37 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		}
 	}
 
+	private void loadEntryIds(Cursor c) {
+		int nbEntries = c.getCount();
+		this.entryIds = new long[nbEntries];
+		while (c.moveToNext()) {
+			this.entryIds[c.getPosition()] = c.getLong(0);
+		}
+		c.moveToPosition(-1);
+	}
+
 	@Override
 	public void onLoaderReset(Loader<Cursor> loader) {
+		Log.d(Constants.TAG, "EntryListFragment: onLoaderReset");
 		this.adapter.swapCursor(null);
 	}
 
-	public EntryListAdapter getAdapter() {
-		return adapter;
+	private class DataSwappingIsOverReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			Log.d(Constants.TAG, "EntryListActivity: RefreshCompletedReceiver received");
+			if (isWaitingForSwappingEnd) {
+				isWaitingForSwappingEnd = false;
+				propagateItemClick();
+			}
+		}
+		
+	}
+
+	// getters
+	public long[] getEntryIds() {
+		return entryIds;
 	}
 
 }

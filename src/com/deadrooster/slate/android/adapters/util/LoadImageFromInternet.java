@@ -137,7 +137,7 @@ public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 
 	private void updateEntryBitmap(Bitmap bitmap) {
 
-		UpdateTask updateTask = new UpdateTask(LoadImageFromInternet.context, this.entryId, bitmap);
+		SaveEntryImageTask updateTask = new SaveEntryImageTask(LoadImageFromInternet.context, this.entryId, bitmap);
 		updateTask.execute();
 	}
 

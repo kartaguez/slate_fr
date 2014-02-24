@@ -3,6 +3,7 @@ package com.deadrooster.slate.android.util;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
+
 public class SlateCalendar extends GregorianCalendar {
 
 	private static final long serialVersionUID = -4131121417448096302L;

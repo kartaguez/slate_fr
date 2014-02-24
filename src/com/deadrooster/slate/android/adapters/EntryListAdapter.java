@@ -5,6 +5,7 @@ import java.util.HashMap;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -16,6 +17,7 @@ import com.deadrooster.slate.android.adapters.util.ImageCacheById;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromDb;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromInternet;
 import com.deadrooster.slate.android.adapters.util.ViewWrapper;
+import com.deadrooster.slate.android.util.Constants;
 import com.deadrooster.slate.android.util.DefaultImage;
 
 public class EntryListAdapter extends SimpleCursorAdapter {
@@ -81,26 +83,30 @@ public class EntryListAdapter extends SimpleCursorAdapter {
 	}
 
 	private void loadImageViewData(int position, ViewWrapper wrapper, ImageView viewThumbnail, int category) {
-
 		Bitmap thumbnail = null;
 		long entryId = this.c.getLong(0);
+		Log.d(Constants.TAG, "EntryListAdapter: loadImageViewData: " + entryId + ", " + category + ", " + position);
 		HashMap<Long, Bitmap> categoryImages = ImageCacheById.getInstance().getImages().get(category);
 		if (categoryImages != null) {
 			thumbnail = categoryImages.get(entryId);
 		}
+		Log.d(Constants.TAG, "EntryListAdapter: loadImageViewData: categoryImages null: " + (categoryImages == null));
 		if (thumbnail == null) {
 			viewThumbnail.setImageBitmap(DefaultImage.getInstance(this.context).getImage());
 			byte[] thumbnailData = this.c.getBlob(4);
 			if (thumbnailData == null) {
+				Log.d(Constants.TAG, "EntryListAdapter: loadImageViewData: no data from cache or DB available: load from the Internet: " + category + ", " + position);
 				LoadImageFromInternet imageTask = new LoadImageFromInternet(this.context, category, entryId, c.getString(5), viewThumbnail);
 				wrapper.setImageTask(imageTask);
 				imageTask.download();
 			} else {
+				Log.d(Constants.TAG, "EntryListAdapter: loadImageViewData: load from DB: " + category + ", " + position);
 				LoadImageFromDb loadImageTask = new LoadImageFromDb(category, entryId, thumbnailData, viewThumbnail);
 				wrapper.setLoadImageTask(loadImageTask);
 				loadImageTask.execute();
 			}
 		} else {
+			Log.d(Constants.TAG, "EntryListAdapter: loadImageViewData: cache available: " + category + ", " + position);
 			viewThumbnail.setImageBitmap(thumbnail);
 		}
 

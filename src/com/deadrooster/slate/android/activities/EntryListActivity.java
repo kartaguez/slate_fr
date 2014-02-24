@@ -1,6 +1,7 @@
 package com.deadrooster.slate.android.activities;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Locale;
@@ -13,14 +14,20 @@ import org.joda.time.format.PeriodFormatterBuilder;
 import android.app.ActionBar;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.ContentProviderOperation;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.OperationApplicationException;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.SparseArray;
+import android.os.RemoteException;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -31,16 +38,23 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.deadrooster.slate.android.R;
+import com.deadrooster.slate.android.adapters.util.Categories;
+import com.deadrooster.slate.android.adapters.util.LoadNewDataTask;
 import com.deadrooster.slate.android.fragments.EntryDetailFragment;
+import com.deadrooster.slate.android.fragments.EntryDetailPagerFragment;
 import com.deadrooster.slate.android.fragments.EntryListFragment;
 import com.deadrooster.slate.android.ga.GAActivity;
+import com.deadrooster.slate.android.model.Model.Entries;
 import com.deadrooster.slate.android.preferences.Preferences;
+import com.deadrooster.slate.android.provider.Provider;
+import com.deadrooster.slate.android.provider.Uris;
+import com.deadrooster.slate.android.services.NotifyRefreshRequestedService;
 import com.deadrooster.slate.android.services.PerformRefreshService;
 import com.deadrooster.slate.android.services.ScheduleRefreshReceiver;
-import com.deadrooster.slate.android.services.NotifyRefreshRequestedService;
 import com.deadrooster.slate.android.tapstream.TapStreamImpl;
 import com.deadrooster.slate.android.util.Callbacks;
 import com.deadrooster.slate.android.util.Connectivity;
+import com.deadrooster.slate.android.util.Constants;
 import com.deadrooster.slate.android.util.SlateCalendar;
 import com.tapstream.sdk.Config;
 import com.tapstream.sdk.Tapstream;
@@ -48,18 +62,21 @@ import com.tapstream.sdk.Tapstream;
 public class EntryListActivity extends GAActivity implements Callbacks, ActionBar.OnNavigationListener {
 
 	public static final String CURRENT_CATEGORY = "current_category";
+	public static final String ENTRY_IDS = "entry_ids";
 
-	private static final String IS_REFRESHING = "is_refreshing";
+	public static final String[] PROJECTION = new String[] {Entries._ID, Entries.TITLE, Entries.DESCRIPTION, Entries.PREVIEW, Entries.THUMBNAIL_URL, Entries.THUMBNAIL_DATA, Entries.PUBLICATION_DATE, Entries.AUTHOR};
+	public static final String SELECTION = "(" + Entries.CATEGORY + " = ?)";
+
 	private static final SimpleDateFormat refreshDateTimeFormat = new SimpleDateFormat("HH:mm", Locale.FRANCE);
-
-	public static SparseArray<String[]> categories;
 
 	private MenuItem refreshItem = null;
 	private boolean twoPane = false;
 	private int category = 0;
-	private boolean isRefreshing = false;
+	private boolean refreshInProgressMustBeNotified = false;
 	private long lastRefreshSuccessDate = -1;
+	private long lastLoadedDataDate = -1;
 
+	private PerformRefreshService performRefreshService = null;
 	private ServiceConnection connection = new RefreshServiceConnection();
 	private RefreshTriggeredReceiver refreshRequestedReceiver = new RefreshTriggeredReceiver();
 	private RefreshCompletedReceiver refreshCompletedReceiver = new RefreshCompletedReceiver();
@@ -73,9 +90,6 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		Config config = new Config();
 		Tapstream.create(getApplication(), TapStreamImpl.ACCOUNT_NAME, TapStreamImpl.SDK_SECRET, config);
 
-		// init categories
-		initCategories();
-
 		// init layout
 		setContentView(R.layout.r_activity_entry_list_one_pane);
 
@@ -83,18 +97,17 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		setUpActionBar();
 
 		// set refresh schedule
-		boolean scheduleBeingSet = ScheduleRefreshReceiver.setScheduleAfterFirstLaunch(this);
+		ScheduleRefreshReceiver.setScheduleAfterFirstLaunch(this);
 
 		// load state
 		if (savedInstanceState != null) {
 			if (savedInstanceState.containsKey(CURRENT_CATEGORY)) {
 				this.category = savedInstanceState.getInt(CURRENT_CATEGORY);
 			}
-			if (savedInstanceState.containsKey(IS_REFRESHING)) {
-				this.isRefreshing = savedInstanceState.getBoolean(IS_REFRESHING);
-			}
-		} else if (Connectivity.isWifiConnected(this) && !scheduleBeingSet) {
-			this.isRefreshing = true;
+		}
+		else if (Connectivity.isWifiConnected(this)) {
+			refreshInProgressMustBeNotified = true;
+			invalidateOptionsMenu();
 		}
 
 		// load required fragments
@@ -103,32 +116,68 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		}
 		EntryListFragment fragment = (EntryListFragment) getFragmentManager().findFragmentById(R.id.entry_list_container);
 		if (fragment == null) {
+			Log.d(Constants.TAG, "EntryListActivity: EntryListFragment created");
 			fragment = new EntryListFragment();
 			Bundle arguments = new Bundle();
 			arguments.putBoolean(EntryListFragment.ARG_TWO_PANE, this.twoPane);
+			arguments.putInt(CURRENT_CATEGORY, this.category);
 			fragment.setArguments(arguments);
 			getFragmentManager().beginTransaction().replace(R.id.entry_list_container, fragment).commit();
+		} else {
+			Log.d(Constants.TAG, "EntryListActivity: EntryListFragment not created");
 		}
 
 	}
 
 	@Override
 	public void onStart() {
-
+		Log.d(Constants.TAG, "EntryListActivity: onStart");
 		super.onStart();
+	}
 
-		// refresh if needed
-		if (this.isRefreshing) {
-			launchRefreshBatch(false, false);
+	@Override
+	protected void onResume() {
+		Log.d(Constants.TAG, "EntryListActivity: onResume");
+		super.onResume();
+
+		// with services
+		registerReceiver(this.refreshRequestedReceiver, new IntentFilter(NotifyRefreshRequestedService.NOTIFICATION));
+		registerReceiver(this.refreshCompletedReceiver, new IntentFilter(PerformRefreshService.NOTIFICATION));
+
+		if (this.performRefreshService == null) {
+			Intent i = new Intent(this, PerformRefreshService.class);
+			bindService(i, this.connection, Context.BIND_AUTO_CREATE);
 		}
+
+		if (this.refreshInProgressMustBeNotified) {
+			launchRefreshActions(false, false);
+		}
+
+		loadLastRefreshDate();
+		boolean swapAndLoadNeeded = checkDataSwapAndLoadNeeded();
+		if (swapAndLoadNeeded) {
+			Log.d(Constants.TAG, "EntryListActivity: data swap and load needed");
+			swapAndLoadData();
+		} else {
+			Log.d(Constants.TAG, "EntryListActivity: data swap and load not needed");
+		}
+
+		// redraw options menu
+		Log.d(Constants.TAG, "EntryListActivity: onResume: invalidateOptionsMenu");
+		invalidateOptionsMenu();
+
 	}
 
 	@Override
 	public void onPause() {
+		Log.d(Constants.TAG, "EntryListActivity: onPause");
 		stopRotatingRefreshIcon();
 
 		// with services
-		unbindService(connection);
+		if (this.performRefreshService != null) {
+			unbindService(this.connection);
+			this.performRefreshService = null;
+		}
 
 		unregisterReceiver(this.refreshRequestedReceiver);
 		unregisterReceiver(this.refreshCompletedReceiver);
@@ -137,51 +186,59 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	}
 
 	@Override
-	protected void onResume() {
-		super.onResume();
+	public void onStop() {
+		Log.d(Constants.TAG, "EntryListActivity: onStop");
+		super.onStop();
+	}
 
-		// with services
-		registerReceiver(refreshRequestedReceiver, new IntentFilter(NotifyRefreshRequestedService.NOTIFICATION));
-		registerReceiver(refreshCompletedReceiver, new IntentFilter(PerformRefreshService.NOTIFICATION));
-
-		Intent i = new Intent(this, PerformRefreshService.class);
-		bindService(i, this.connection, Context.BIND_AUTO_CREATE);
-
-		// redraw options menu
-		invalidateOptionsMenu();
-
+	@Override
+	protected void onDestroy() {
+		Log.d(Constants.TAG, "EntryListActivity: onDestroy");
+		super.onDestroy();
 	}
 
 	@Override
 	public void onSaveInstanceState(Bundle outState) {
+		Log.d(Constants.TAG, "EntryListActivity: onSaveInstanceState");
 		super.onSaveInstanceState(outState);
 		outState.putInt(CURRENT_CATEGORY, this.category);
-		outState.putBoolean(IS_REFRESHING, this.isRefreshing);
+	}
+
+	public void onRestoreInstanceState(Bundle outState) {
+		Log.d(Constants.TAG, "EntryListActivity: onRestoreInstanceState");
+		if (outState != null) {
+			if (outState.containsKey(CURRENT_CATEGORY)) {
+				this.category = outState.getInt(CURRENT_CATEGORY);
+			}
+		}
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		getMenuInflater().inflate(R.menu.main, menu);
 		this.refreshItem = menu.getItem(1);
-		if (this.isRefreshing) {
-			startRotateRefreshIcon();
+		if (this.refreshInProgressMustBeNotified) {
+			Log.d(Constants.TAG, "EntryListActivity: onCreateOptionsMenu: refreshInProgressMustBeNotified: true");
+			startRotatingRefreshIcon();
+		} else {
+			Log.d(Constants.TAG, "EntryListActivity: onCreateOptionsMenu: refreshInProgressMustBeNotified: false");
 		}
+		Log.d(Constants.TAG, "EntryListActivity: OptionsMenu created");
 		return true;
 	}
 
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
-
 		updateLastRefreshDate(menu);
+		getActionBar().setSelectedNavigationItem(this.category);
+		Log.d(Constants.TAG, "EntryListActivity: OptionsMenu prepared");
 		return super.onPrepareOptionsMenu(menu);
 	}
 
 	private void updateLastRefreshDate(Menu menu) {
-
+		Log.d(Constants.TAG, "EntryListActivity: updateLastRefreshDate");
 		MenuItem lastRefreshDateItem = menu.getItem(0);
 		TextView actionLastRefreshTime = (TextView) lastRefreshDateItem.getActionView();
-
-		loadLastRefreshDate();
 
 		if (this.lastRefreshSuccessDate != -1) {
 			SlateCalendar calendar = new SlateCalendar();
@@ -261,7 +318,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		int itemId = item.getItemId();
 		switch (itemId) {
 		case R.id.refresh:
-			launchRefreshBatch(false, true);
+			launchRefreshActions(false, true);
 			break;
 		default:
 			break;
@@ -270,8 +327,24 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	}
 
 	private void loadLastRefreshDate() {
+		Log.d(Constants.TAG, "EntryListActivity: loadLastRefreshDate");
+
 		SharedPreferences settings = getSharedPreferences(Preferences.PREFS_NAME, 0);
 	    this.lastRefreshSuccessDate = settings.getLong(Preferences.PREF_KEY_LAST_REFRESH_DATE, -1);
+	}
+
+	private boolean checkDataSwapAndLoadNeeded() {
+		Log.d(Constants.TAG, "EntryListActivity: checkDataReloadNeeded");
+
+		boolean ret = false;
+		SharedPreferences settings = getSharedPreferences(Preferences.PREFS_NAME, 0);
+	    this.lastLoadedDataDate = settings.getLong(Preferences.PREF_KEY_LAST_LOADED_DATA_DATE, -1);
+
+	    if (this.lastLoadedDataDate < this.lastRefreshSuccessDate) {
+	    	ret = true;
+	    }
+
+	    return ret;
 	}
 
 	/**
@@ -279,8 +352,8 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	 * the item with the given ID was selected.
 	 */
 	@Override
-	public void onItemSelected(long id) {
-
+	public void onItemSelected(long id, int position) {
+		Log.d(Constants.TAG, "EntryListActivity: onItemSelected: position: " + position + ", id: " + id);
 		if (this.twoPane) {
 			EntryDetailFragment fragment = (EntryDetailFragment) getFragmentManager().findFragmentById(R.id.entry_detail_container);
 			if (fragment == null) {
@@ -293,21 +366,24 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 				fragment.updateContent(id);
 			}
 		} else {
-			Intent detailIntent = new Intent(this, EntryDetailActivity.class);
+			EntryListFragment fragment = (EntryListFragment) getFragmentManager().findFragmentById(R.id.entry_list_container);
+			long[] entryIds = fragment.getEntryIds();
+			
+			Intent detailIntent = new Intent(this, EntryDetailPagerActivity.class);
 			detailIntent.putExtra(CURRENT_CATEGORY, this.category);
-			detailIntent.putExtra(EntryDetailFragment.ARG_ITEM_ID, id);
-			startActivity(detailIntent);
+			detailIntent.putExtra(ENTRY_IDS, entryIds);
+			detailIntent.putExtra(EntryDetailPagerFragment.ARG_NUM, entryIds.length);
+			detailIntent.putExtra(EntryDetailPagerFragment.ARG_ITEM_POSITION, position);
+			EntryDetailPagerFragment.resetScrollPositions();
+			Log.d(Constants.TAG, "EntryListActivity: onItemSelected: CURRENT_CATEGORY: " + this.category + ", ARG_NUM: " + entryIds.length + ", ARG_ITEM_POSITION: "  + position);
+			startActivityForResult(detailIntent, 0);
 		}
 	}
 
-	// init
-	private void initCategories() {
-		EntryListActivity.categories.put(0, new String[] {"une", getString(R.string.section_une)});
-		EntryListActivity.categories.put(1, new String[] {"france", getString(R.string.section_france)});
-		EntryListActivity.categories.put(2, new String[] {"monde", getString(R.string.section_monde)});
-		EntryListActivity.categories.put(3, new String[] {"economie", getString(R.string.section_economie)});
-		EntryListActivity.categories.put(4, new String[] {"culture", getString(R.string.section_culture)});
-		EntryListActivity.categories.put(5, new String[] {"life", getString(R.string.section_life)});
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		Log.d(Constants.TAG, "EntryListActivity: onActivityResult");
+		super.onActivityResult(requestCode, resultCode, data);
 	}
 
 	// action bar
@@ -342,9 +418,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		return true;
 	}
 
-	private void startRotateRefreshIcon() {
-
-		this.isRefreshing = true;
+	private void startRotatingRefreshIcon() {
 
 		stopRotatingRefreshIcon();
 
@@ -356,11 +430,16 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		iv.startAnimation(rotation);
 
 		if (this.refreshItem != null) {
+			Log.d(Constants.TAG, "EntryListActivity: startRotateRefreshIcon");
 			this.refreshItem.setActionView(iv);
+		} else {
+			Log.d(Constants.TAG, "EntryListActivity: cannot startRotateRefreshIcon: item null");
 		}
 	}
 
 	private void stopRotatingRefreshIcon() {
+		Log.d(Constants.TAG, "EntryListActivity: stopRotatingRefreshIcon");
+		this.refreshInProgressMustBeNotified = false;
 		if (this.refreshItem != null) {
 			if (this.refreshItem.getActionView() != null) {
 				this.refreshItem.getActionView().clearAnimation();
@@ -369,10 +448,11 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		}
 	}
 
-	private void launchRefreshBatch(boolean alreadyLaunchedInBackground, boolean handleRefreshIcon) {
+	private void launchRefreshActions(boolean alreadyLaunchedInBackground, boolean handleRefreshIcon) {
+		Log.d(Constants.TAG, "EntryListActivity: launchRefreshBatch: " + alreadyLaunchedInBackground + ", " + handleRefreshIcon);
 		fireRefreshEvent();
 		if (handleRefreshIcon) {
-			startRotateRefreshIcon();
+			startRotatingRefreshIcon();
 		}
 
 		if (!alreadyLaunchedInBackground) {
@@ -382,11 +462,72 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	}
 
 	public void finalizeRefreshBatch() {
-
-		this.isRefreshing = false;
+		Log.d(Constants.TAG, "EntryListActivity: finalizeRefreshBatch");
 		stopRotatingRefreshIcon();
 
 	    invalidateOptionsMenu();
+	}
+
+	// copy newly fetched data into the table used for display
+	private void swapAndLoadData() {
+
+    	Log.d(Constants.TAG, "EntryListActivity: swapAndLoadData: update last loaded data date");
+    	SharedPreferences settings = getSharedPreferences(Preferences.PREFS_NAME, 0);
+		SharedPreferences.Editor editor = settings.edit();
+	    editor.putLong(Preferences.PREF_KEY_LAST_LOADED_DATA_DATE, this.lastRefreshSuccessDate);
+	    editor.commit();
+
+		Log.d(Constants.TAG, "EntryListActivity: swapAndLoadData: swap data");
+		// TODO JGU #1: swap in background or UI thread
+		LoadNewDataTask loadNewDataTask = new LoadNewDataTask(this);
+		loadNewDataTask.execute();
+//		executeSwapping();
+		///JGU #1
+	}
+
+	// TODO JGU #1
+	@SuppressWarnings("unused")
+	///JGU #1
+	private void executeSwapping() {
+		ContentResolver cr = getContentResolver();
+		Cursor c = null;
+		ContentValues values = null;
+
+		ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+
+		int nbCategories = Categories.getInstance(this).getCategories().size();
+		for (int i = 0; i < nbCategories; i++) {
+			ops.add(ContentProviderOperation
+					.newDelete(Uris.Entries.CONTENT_URI_ENTRIES)
+					.withSelection(PerformRefreshService.SELECTION_DELETE, new String[] {Integer.toString(i)})
+					.build());
+			c = cr.query(Uris.Entries.CONTENT_URI_ENTRIES_TEMP, EntryListActivity.PROJECTION, EntryListActivity.SELECTION, new String[] {Integer.toString(i)}, null);
+
+			while (c.moveToNext()) {
+				values = new ContentValues();
+				values.put(Entries.CATEGORY, i);
+				values.put(Entries.TITLE, c.getString(1));
+				values.put(Entries.DESCRIPTION, c.getString(2));
+				values.put(Entries.PREVIEW, c.getString(3));
+				values.put(Entries.THUMBNAIL_URL, c.getString(4));
+				values.put(Entries.PUBLICATION_DATE, c.getString(6));
+				values.put(Entries.AUTHOR, c.getString(7));
+				ops.add(ContentProviderOperation
+						.newInsert(Uris.Entries.CONTENT_URI_ENTRIES)
+						.withValues(values)
+						.build());
+			}
+		}
+		if (c != null) {
+			c.close();
+		}
+		try {
+			cr.applyBatch(Provider.AUTHORITY, ops);
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		} catch (OperationApplicationException e) {
+			e.printStackTrace();
+		}
 	}
 
 	// TapStream methods
@@ -406,11 +547,22 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		
 		@Override
 		public void onServiceDisconnected(ComponentName name) {
-			connection = null;
+			Log.d(Constants.TAG, "EntryListActivity: RefreshServiceConnection: onServiceDisconnected");
+			performRefreshService = null;
 		}
 		
 		@Override
 		public void onServiceConnected(ComponentName name, IBinder rawBinder) {
+			Log.d(Constants.TAG, "EntryListActivity: RefreshServiceConnection: onServiceConnected");
+			performRefreshService = ((PerformRefreshService.SlateBinder) rawBinder).getService();
+			if (performRefreshService.isRefreshInProgress()) {
+				Log.d(Constants.TAG, "EntryListActivity: RefreshServiceConnection:: refresh in progress: start rotating icon");
+				refreshInProgressMustBeNotified = true;
+				invalidateOptionsMenu();
+				launchRefreshActions(true, false);
+			} else {
+				Log.d(Constants.TAG, "EntryListActivity: RefreshServiceConnection:: no refresh in progress");
+			}
 		}
 
 	};
@@ -419,7 +571,8 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			launchRefreshBatch(true, true);
+			Log.d(Constants.TAG, "EntryListActivity: RefreshTriggeredReceiver received");
+			launchRefreshActions(true, true);
 		}
 		
 	}
@@ -428,12 +581,15 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			Log.d(Constants.TAG, "EntryListActivity: RefreshCompletedReceiver received");
+			boolean isGlobalSuccess = intent.getBooleanExtra(PerformRefreshService.IS_GLOBAL_SUCCESS, false);
+			if (isGlobalSuccess) {
+				loadLastRefreshDate();
+				swapAndLoadData();
+			}
 			finalizeRefreshBatch();
 		}
 		
 	}
 
-	static {
-		EntryListActivity.categories = new SparseArray<String[]>();
-	}
 }

@@ -60,6 +60,21 @@ public class Provider extends ContentProvider {
 				qb.setDistinct(true);
 				break;
 
+			case UriMatchingCodes.Entries.ENTRIES_TEMP:
+				
+				qb = new SQLiteQueryBuilder();
+				qb.setTables(Model.Entries.TABLE_TEMP_NAME);
+				qb.setProjectionMap(entriesPM);
+				break;
+
+			case UriMatchingCodes.Entries.ENTRIES_TEMP_DISTINCT:
+				
+				qb = new SQLiteQueryBuilder();
+				qb.setTables(Model.Entries.TABLE_TEMP_NAME);
+				qb.setProjectionMap(entriesPM);
+				qb.setDistinct(true);
+				break;
+
 			default:
 				throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + " :" + uri);
 		}
@@ -96,12 +111,19 @@ public class Provider extends ContentProvider {
 	@Override
 	public Uri insert(Uri uri, ContentValues initialValues) {
 
-		if (uriMatcher.match(uri) != UriMatchingCodes.Entries.ENTRIES) {
-			throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + uri);
-		}
+		String table = null;
+		int uriMatchCode = uriMatcher.match(uri);
 
-		// Set table
-		String table = Model.Entries.TABLE_NAME;
+		switch (uriMatchCode) {
+			case UriMatchingCodes.Entries.ENTRIES:
+				table = Model.Entries.TABLE_NAME;
+				break;
+			case UriMatchingCodes.Entries.ENTRIES_TEMP:
+				table = Model.Entries.TABLE_TEMP_NAME;
+				break;
+			default:
+				throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + uri);
+		}
 
 		// Clean content values
 		ContentValues values;
@@ -138,15 +160,25 @@ public class Provider extends ContentProvider {
 
 		// Generate uri to return
 		if (rowId > 0) {
-			Uri insertedObjectUri = ContentUris.withAppendedId(Uris.Entries.CONTENT_URI_ENTRY_ID, rowId);
-			getContext().getContentResolver().notifyChange(insertedObjectUri, null);
-			getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
-			getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
-			return insertedObjectUri;
-
+			Uri insertedObjectUri = null;
+			switch (uriMatchCode) {
+				case UriMatchingCodes.Entries.ENTRIES:
+					insertedObjectUri = ContentUris.withAppendedId(Uris.Entries.CONTENT_URI_ENTRY_ID, rowId);
+					getContext().getContentResolver().notifyChange(insertedObjectUri, null);
+					getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
+					getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
+					return insertedObjectUri;
+				case UriMatchingCodes.Entries.ENTRIES_TEMP:
+					insertedObjectUri = ContentUris.withAppendedId(Uris.Entries.CONTENT_URI_ENTRY_TEMP_ID, rowId);
+					getContext().getContentResolver().notifyChange(insertedObjectUri, null);
+					getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_TEMP_DISTINCT, null);
+					getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_TEMP, null);
+					return insertedObjectUri;
+				default:
+					throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + uri);
+			}
 		} else {
 			throw new IllegalArgumentException(Errors.URI_INSERT_FAILED + uri);
-
 		}
 	}
 
@@ -160,14 +192,17 @@ public class Provider extends ContentProvider {
 		switch (uriMatcher.match(uri)) {
 			case UriMatchingCodes.Entries.ENTRIES :
 				count = db.delete(Model.Entries.TABLE_NAME, selection, selectionArgs);
+				getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
+				getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
+				break;
+			case UriMatchingCodes.Entries.ENTRIES_TEMP :
+				count = db.delete(Model.Entries.TABLE_TEMP_NAME, selection, selectionArgs);
+				getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_TEMP_DISTINCT, null);
+				getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_TEMP, null);
 				break;
 			default:
 				throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + uri);
 		}
-
-//		getContext().getContentResolver().notifyChange(uri, null);
-//		getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
-//		getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
 
 		return count;
 	}
@@ -183,13 +218,12 @@ public class Provider extends ContentProvider {
 			case UriMatchingCodes.Entries.ENTRY_ID :
 				count = db.update(Model.Entries.TABLE_NAME, values, selection, selectionArgs);
 				break;
+			case UriMatchingCodes.Entries.ENTRY_TEMP_ID :
+				count = db.update(Model.Entries.TABLE_TEMP_NAME, values, selection, selectionArgs);
+				break;
 			default:
 				throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + uri);
 		}
-
-//		getContext().getContentResolver().notifyChange(uri, null);
-//		getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
-//		getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
 
 		return count;
 		
@@ -203,9 +237,14 @@ public class Provider extends ContentProvider {
 
 		// Init uriMather
 		uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+
 		uriMatcher.addURI(AUTHORITY, Model.Entries.TABLE_NAME + "/" + Uris.ITEM, UriMatchingCodes.Entries.ENTRY_ID);
 		uriMatcher.addURI(AUTHORITY, Model.Entries.TABLE_NAME + "/" + Uris.ALL, UriMatchingCodes.Entries.ENTRIES);
 		uriMatcher.addURI(AUTHORITY, Model.Entries.TABLE_NAME + Uris._DISTINCT + "/" + Uris.ALL, UriMatchingCodes.Entries.ENTRIES_DISTINCT);
+
+		uriMatcher.addURI(AUTHORITY, Model.Entries.TABLE_TEMP_NAME + "/" + Uris.ITEM, UriMatchingCodes.Entries.ENTRY_TEMP_ID);
+		uriMatcher.addURI(AUTHORITY, Model.Entries.TABLE_TEMP_NAME + "/" + Uris.ALL, UriMatchingCodes.Entries.ENTRIES_TEMP);
+		uriMatcher.addURI(AUTHORITY, Model.Entries.TABLE_TEMP_NAME + Uris._DISTINCT + "/" + Uris.ALL, UriMatchingCodes.Entries.ENTRIES_TEMP_DISTINCT);
 
 		// Init EntriesPM
 		entriesPM = new HashMap<String, String>();

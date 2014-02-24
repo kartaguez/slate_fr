@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.MenuItem;
 
 import com.deadrooster.slate.android.R;
+import com.deadrooster.slate.android.adapters.util.Categories;
 import com.deadrooster.slate.android.fragments.EntryDetailFragment;
 import com.deadrooster.slate.android.ga.GAActivity;
 
@@ -27,7 +28,7 @@ public class EntryDetailActivity extends GAActivity {
 
 		// Set title
 		int category = getIntent().getIntExtra(EntryListActivity.CURRENT_CATEGORY, 0);
-		String title = EntryListActivity.categories.get(category)[1];
+		String title = Categories.getInstance(this).getCategories().get(category)[1];
 		this.getActionBar().setTitle(title);
 
 		if (savedInstanceState == null) {
@@ -49,4 +50,9 @@ public class EntryDetailActivity extends GAActivity {
 	    return super.onOptionsItemSelected(item);
 	}
 
+	@Override
+	public boolean onNavigateUp() {
+		finish();
+		return true;
+	}
 }

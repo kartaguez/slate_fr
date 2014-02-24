@@ -9,8 +9,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.util.Log;
 
 import com.deadrooster.slate.android.preferences.Preferences;
+import com.deadrooster.slate.android.util.Constants;
 
 public class ScheduleRefreshReceiver extends BroadcastReceiver {
 
@@ -20,10 +22,13 @@ public class ScheduleRefreshReceiver extends BroadcastReceiver {
 
 	@Override
 	public void onReceive(Context context, Intent intent) {
+		Log.d(Constants.TAG, "ScheduleRefreshReceiver: onReceive");
+
 		setStartSchedule(context, true);
 	}
 
 	public static boolean setScheduleAfterFirstLaunch(Context context) {
+		Log.d(Constants.TAG, "ScheduleRefreshReceiver: setScheduleAfterFirstLaunch");
 
 		SharedPreferences settings = context.getSharedPreferences(Preferences.PREFS_NAME, 0);
 	    boolean scheduleIsSet = settings.getBoolean(Preferences.PREF_KEY_SCHEDULE_IS_SET, false);
@@ -43,12 +48,15 @@ public class ScheduleRefreshReceiver extends BroadcastReceiver {
 		    editor.commit();
 		    return true;
 	    } else {
+	    	Log.d(Constants.TAG, "ScheduleRefreshReceiver: no need to set schedule");
 	    	return false;
 	    }
 
 	}
 
 	private static void setStartSchedule(Context context, boolean isAfterBoot) {
+		Log.d(Constants.TAG, "ScheduleRefreshReceiver: setStartSchedule: isAfterBoot = " + isAfterBoot);
+
 		AlarmManager service = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 		Intent i = new Intent(context, LaunchRefreshingBatchReceiver.class);
 		PendingIntent pending = PendingIntent.getBroadcast(context, 0, i, PendingIntent.FLAG_CANCEL_CURRENT);
@@ -61,9 +69,6 @@ public class ScheduleRefreshReceiver extends BroadcastReceiver {
 		}
 
 		service.setInexactRepeating(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), REPEAT_TIME_SECONDS * SECOND_DURATION, pending);
-		if (!isAfterBoot) {
-			LaunchRefreshingBatchReceiver.launchRefreshingBatch(context);
-		}
 
 		SharedPreferences settings = context.getSharedPreferences(Preferences.PREFS_NAME, 0);
 		SharedPreferences.Editor editor = settings.edit();

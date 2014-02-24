@@ -42,4 +42,9 @@ public class RefreshCounter {
 	public void deactivate() {
 		this.active = false;
 	}
+
+	public boolean hasAtLeastOneStopped() {
+		return this.atLeastOneStopped;
+	}
+
 }

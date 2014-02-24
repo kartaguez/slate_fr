@@ -42,19 +42,20 @@ public final class R {
         public static final int entry_author_prefix_id=0x7f0a0006;
         public static final int entry_blank_author_id=0x7f0a0008;
         public static final int entry_detail_container=0x7f0a000c;
-        public static final int entry_list_container=0x7f0a000d;
-        public static final int entry_preview=0x7f0a0010;
+        public static final int entry_detail_pager_id=0x7f0a000d;
+        public static final int entry_list_container=0x7f0a000e;
+        public static final int entry_preview=0x7f0a0011;
         public static final int entry_preview_id=0x7f0a0004;
         public static final int entry_publication_date_id=0x7f0a000a;
         public static final int entry_publication_date_prefix_id=0x7f0a0009;
         public static final int entry_scroll_id=0x7f0a0002;
-        public static final int entry_thumbnail=0x7f0a000e;
+        public static final int entry_thumbnail=0x7f0a000f;
         public static final int entry_thumbnail_id=0x7f0a0005;
-        public static final int entry_title=0x7f0a000f;
+        public static final int entry_title=0x7f0a0010;
         public static final int entry_title_id=0x7f0a0003;
         public static final int entry_webview_id=0x7f0a000b;
-        public static final int last_refresh_date=0x7f0a0011;
-        public static final int refresh=0x7f0a0012;
+        public static final int last_refresh_date=0x7f0a0012;
+        public static final int refresh=0x7f0a0013;
     }
     public static final class layout {
         public static final int action_menu_last_refresh_date=0x7f030000;
@@ -62,13 +63,14 @@ public final class R {
         public static final int category_entry_list=0x7f030002;
         public static final int entry=0x7f030003;
         public static final int r_activity_entry_detail=0x7f030004;
-        public static final int r_activity_entry_list_one_pane=0x7f030005;
-        public static final int r_activity_entry_list_two_pane=0x7f030006;
-        public static final int r_fragment_entry_detail=0x7f030007;
-        public static final int r_fragment_entry_list=0x7f030008;
-        public static final int r_row_entry_one_pane=0x7f030009;
-        public static final int r_row_entry_two_pane=0x7f03000a;
-        public static final int row_entry=0x7f03000b;
+        public static final int r_activity_entry_detail_pager=0x7f030005;
+        public static final int r_activity_entry_list_one_pane=0x7f030006;
+        public static final int r_activity_entry_list_two_pane=0x7f030007;
+        public static final int r_fragment_entry_detail=0x7f030008;
+        public static final int r_fragment_entry_list=0x7f030009;
+        public static final int r_row_entry_one_pane=0x7f03000a;
+        public static final int r_row_entry_two_pane=0x7f03000b;
+        public static final int row_entry=0x7f03000c;
     }
     public static final class menu {
         public static final int main=0x7f090000;

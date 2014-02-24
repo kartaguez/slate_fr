@@ -10,7 +10,7 @@ import com.deadrooster.slate.android.model.Model;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
 	private static final String DATABASE_NAME = "slate.db";
-	private static final int DATABASE_VERSION = 1;
+	private static final int DATABASE_VERSION = 2;
 	
 	public DatabaseHelper(Context context) {
 		this(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -29,11 +29,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 		// Delete all tables
 		db.execSQL(DatabaseSchema.DROP_TABLE + Model.Entries.TABLE_NAME);
+		db.execSQL(DatabaseSchema.DROP_TABLE + Model.Entries.TABLE_TEMP_NAME);
+
 		// Create schema
 		createSchema(db);
 	}
 
 	private void createSchema(SQLiteDatabase db) {
 		db.execSQL(DatabaseSchema.CREATE_TABLE_ENTRIES);
+		db.execSQL(DatabaseSchema.CREATE_TABLE_TEMP_ENTRIES);
 	}
 }

@@ -10,11 +10,12 @@ public class Model {
 
 		// Table name
 		public static final String TABLE_NAME = "entries";
+		public static final String TABLE_TEMP_NAME = "entries_temp";
 
 		// Columns
+		public static final String CATEGORY = "category";
 		public static final String TITLE = "title";
 		public static final String DESCRIPTION = "description";
-		public static final String CATEGORY = "category";
 		public static final String PREVIEW = "preview";
 		public static final String THUMBNAIL_URL = "thumbnail_url";
 		public static final String THUMBNAIL_DATA = "thumbnail_data";

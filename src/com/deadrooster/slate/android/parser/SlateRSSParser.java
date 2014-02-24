@@ -204,41 +204,43 @@ public class SlateRSSParser {
 		parser.require(XmlPullParser.END_TAG, NAMESPACE, Tags.DESCRIPTION);
 
 		// clean content
-		description = description.replace("http://www.slate.fr//", "http://");
-
-		Matcher m = null;
-
-    	Pattern imageHeight = Pattern.compile("height:\\s?[^;]+;\\s?");
-    	m = imageHeight.matcher(description);
-    	description = m.replaceAll("");
-
-    	Pattern imageWidth = Pattern.compile("width:\\s?[^;]+;\\s?");
-    	m = imageWidth.matcher(description);
-    	description = m.replaceAll("");
-
-		Pattern videoHeight = Pattern.compile(" height=\"[^\"]+\"");
-    	m = videoHeight.matcher(description);
-    	description = m.replaceAll("");
-
-		Pattern videoWidth = Pattern.compile(" width=\"[^\"]+\"");
-    	m = videoWidth.matcher(description);
-    	description = m.replaceAll("");
-
-		final List<String> tagValues = new ArrayList<String>();
-		Pattern.compile("<a(?=\\s|>)(?!(?:[^>=]|=(['\"])(?:(?!\\1).)*\\1)*?\\shref=['\"])[^>]*>.*?<\\/a>",Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
-		Pattern imageTag = Pattern.compile("<img\\s(?!\\swidth=\"(.+?)\")(.+?)/>");
-		m = imageTag.matcher(description);
-		while (m.find()) {
-			tagValues.add(m.group());
+		if (description != null) {
+			description = description.replace("http://www.slate.fr//", "http://");
+	
+			Matcher m = null;
+	
+	    	Pattern imageHeight = Pattern.compile("height:\\s?[^;]+;\\s?");
+	    	m = imageHeight.matcher(description);
+	    	description = m.replaceAll("");
+	
+	    	Pattern imageWidth = Pattern.compile("width:\\s?[^;]+;\\s?");
+	    	m = imageWidth.matcher(description);
+	    	description = m.replaceAll("");
+	
+			Pattern videoHeight = Pattern.compile(" height=\"[^\"]+\"");
+	    	m = videoHeight.matcher(description);
+	    	description = m.replaceAll("");
+	
+			Pattern videoWidth = Pattern.compile(" width=\"[^\"]+\"");
+	    	m = videoWidth.matcher(description);
+	    	description = m.replaceAll("");
+	
+			final List<String> tagValues = new ArrayList<String>();
+			Pattern.compile("<a(?=\\s|>)(?!(?:[^>=]|=(['\"])(?:(?!\\1).)*\\1)*?\\shref=['\"])[^>]*>.*?<\\/a>",Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
+			Pattern imageTag = Pattern.compile("<img\\s(?!\\swidth=\"(.+?)\")(.+?)/>");
+			m = imageTag.matcher(description);
+			while (m.find()) {
+				tagValues.add(m.group());
+			}
+	
+			String cleanValue = null;
+			for (String value : tagValues) {
+				cleanValue = value.substring(0, value.length() - 2) + " width=\"100%\"/>";
+				description = description.replace(value, cleanValue);
+			}
+	
+			description = EncodingConverter.toUTF8(description);
 		}
-
-		String cleanValue = null;
-		for (String value : tagValues) {
-			cleanValue = value.substring(0, value.length() - 2) + " width=\"100%\"/>";
-			description = description.replace(value, cleanValue);
-		}
-
-		description = EncodingConverter.toUTF8(description);
 		return description;
 	}
 

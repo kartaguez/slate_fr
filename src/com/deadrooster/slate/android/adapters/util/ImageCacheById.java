@@ -2,7 +2,10 @@ package com.deadrooster.slate.android.adapters.util;
 
 import java.util.HashMap;
 
+import com.deadrooster.slate.android.util.Constants;
+
 import android.graphics.Bitmap;
+import android.util.Log;
 import android.util.SparseArray;
 
 public class ImageCacheById {
@@ -27,6 +30,7 @@ public class ImageCacheById {
 	}
 
 	public void clear(int category) {
+		Log.d(Constants.TAG, "ImageCacheById: clear category: " + category);
 		if (this.images.get(category) != null) {
 			this.images.get(category).clear();
 			this.images.remove(category);

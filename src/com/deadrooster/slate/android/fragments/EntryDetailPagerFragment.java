@@ -27,6 +27,7 @@ import com.deadrooster.slate.android.activities.EntryListActivity;
 import com.deadrooster.slate.android.adapters.util.ImageCacheById;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromDb;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromInternet;
+import com.deadrooster.slate.android.adapters.util.ScrolledFragment;
 import com.deadrooster.slate.android.model.Model.Entries;
 import com.deadrooster.slate.android.provider.Uris;
 import com.deadrooster.slate.android.util.Constants;
@@ -37,26 +38,28 @@ import com.deadrooster.slate.android.util.DefaultImage;
  * contained in a {@link EntryListActivity} in two-pane mode (on tablets) or a
  * {@link EntryDetailActivity} on handsets.
  */
-public class EntryDetailFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
+public class EntryDetailPagerFragment extends Fragment implements ScrolledFragment, LoaderManager.LoaderCallbacks<Cursor> {
 	/**
 	 * The fragment argument representing the item ID that this fragment
 	 * represents.
 	 */
 	public static final String ARG_ITEM_ID = "item_id";
+	public static final String ARG_ITEM_POSITION = "item_position";
+	public static final String ARG_NUM = "num";
 
 	public static final String[] PROJECTION = new String[] {Entries._ID, Entries.CATEGORY, Entries.TITLE, Entries.PREVIEW, Entries.DESCRIPTION, Entries.THUMBNAIL_URL, Entries.THUMBNAIL_DATA, Entries.PUBLICATION_DATE, Entries.AUTHOR};
 	public static final String SELECTION = "((" + Entries._ID + " == ?))";
 
-	private static final String STATE_SCROLL_X = "scroll_x";
-	private static final String STATE_SCROLL_Y = "scroll_y";
+	private static HashMap<Long, Float> scrollXTable = new HashMap<Long, Float>();
+	private static HashMap<Long, Float> scrollYTable = new HashMap<Long, Float>();
 
 	private static final String MIME_TYPE = "text/html";
 	private static final String ENCODING = "utf-8";
 
-	private long entryId = -1;
+	private long entryId;
+	private int num;
+	private int position;
 	private ScrollView scrollView;
-	private float scrollX = -1;
-	private float scrollY = -1;
 	private TextView titleView;
 	private TextView previewView;
 	private TextView publicationDateView;
@@ -72,54 +75,77 @@ public class EntryDetailFragment extends Fragment implements LoaderManager.Loade
 	 * Mandatory empty constructor for the fragment manager to instantiate the
 	 * fragment (e.g. upon screen orientation changes).
 	 */
-	public EntryDetailFragment() {
+	public EntryDetailPagerFragment() {
+	}
+
+	public static EntryDetailPagerFragment newInstance(long id, int num, int position) {
+		Log.d(Constants.TAG, "EntryDetailPagerFragment: newInstance: position: " + position);
+		EntryDetailPagerFragment fragment = new EntryDetailPagerFragment();
+		Bundle args = new Bundle();
+		args.putLong(ARG_ITEM_ID, id);
+		args.putInt(ARG_NUM, num);
+		args.putInt(ARG_ITEM_POSITION, position);
+		fragment.setArguments(args);
+
+		return fragment;
 	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		Log.d(Constants.TAG, "EntryDetailFragment - onCreate");
 
 		// init loader
 		initLoader();
 
-		if (getArguments().containsKey(ARG_ITEM_ID)) {
-			this.entryId = getArguments().getLong(ARG_ITEM_ID);
+		if (getArguments() != null) {
+			if (getArguments().containsKey(ARG_ITEM_ID)) {
+				this.entryId = getArguments().getLong(ARG_ITEM_ID);
+			} else {
+				this.entryId = 0;
+			}
+			if (getArguments().containsKey(ARG_NUM)) {
+				this.num = getArguments().getInt(ARG_NUM);
+			} else {
+				this.num = 0;
+			}
+			if (getArguments().containsKey(ARG_ITEM_POSITION)) {
+				this.position = getArguments().getInt(ARG_ITEM_POSITION);
+			} else {
+				this.position = 0;
+			}
 		}
+		Log.d(Constants.TAG, "EntryDetailPagerFragment: onCreate: entryId: " + this.entryId + ", num: " + this.num + ", position: " + this.position);
 
-		if (savedInstanceState != null) {
-			if (savedInstanceState.getLong(ARG_ITEM_ID, -1) != -1) {
-				this.entryId = savedInstanceState.getLong(ARG_ITEM_ID, -1);
-			}
-			if (savedInstanceState.getFloat(STATE_SCROLL_X, -1) != -1) {
-				this.scrollX = savedInstanceState.getFloat(STATE_SCROLL_X);
-			}
-			if (savedInstanceState.getFloat(STATE_SCROLL_Y, -1) != -1) {
-				this.scrollY = savedInstanceState.getFloat(STATE_SCROLL_Y);
-			}
-		}
 	}
 
 	@SuppressLint("SetJavaScriptEnabled")
 	@Override
-	public View onCreateView(LayoutInflater inflater, ViewGroup container,
-			Bundle savedInstanceState) {
+	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
-		Log.d(Constants.TAG, "EntryDetailFragment - onCreateView");
-		View rootView = inflater.inflate(R.layout.r_fragment_entry_detail, container, false);
+		Log.d(Constants.TAG, "EntryDetailPagerFragment: onCreateView");
 
 		// set content layout and view
+		View rootView = inflater.inflate(R.layout.r_fragment_entry_detail, container, false);
 		this.scrollView = (ScrollView) rootView.findViewById(R.id.entry_scroll_id);
 		this.vto = this.scrollView.getViewTreeObserver();
 		this.vto.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
 			@Override
 			public void onGlobalLayout() {
-				if (scrollX > -1 || scrollY > -1) {
-					scrollView.scrollTo(Math.round(scrollX * getScrollViewHeight()), Math.round(scrollY * getScrollViewHeight()));
+
+				float curScrollX = -1;
+				if (scrollXTable.get(entryId) != null) {
+					curScrollX = scrollXTable.get(entryId).floatValue();
 				}
-				if (entryId > 0) {
-					scrollView.setVisibility(View.VISIBLE);
+				float curScrollY = -1;
+				if (scrollYTable.get(entryId) != null) {
+					Log.d(Constants.TAG, "EntryDetailPagerFragment: set scrollY: entryId: " + entryId + ", scrollY: " + scrollYTable.get(entryId).intValue());
+					curScrollY = scrollYTable.get(entryId).floatValue();
 				}
+				if (curScrollX > 0 || curScrollY > 0) {
+					Log.d(Constants.TAG, "EntryDetailPagerFragment: onCreateView: scroll: position: " + position + ", scrollY: " + curScrollY);
+					scrollView.scrollTo(Math.round(curScrollX * getScrollViewHeight()), Math.round(curScrollY * getScrollViewHeight()));
+				}
+				scrollView.setVisibility(View.VISIBLE);
 			}
 		});
 		this.titleView = (TextView) rootView.findViewById(R.id.entry_title_id);
@@ -144,26 +170,17 @@ public class EntryDetailFragment extends Fragment implements LoaderManager.Loade
 
 	@Override
 	public void onSaveInstanceState(Bundle outState) {
-		Log.d(Constants.TAG, "EntryDetailFragment - onSaveInstanceState");
-		super.onSaveInstanceState(outState);
-		outState.putLong(ARG_ITEM_ID, this.entryId);
-
-		outState.putFloat(STATE_SCROLL_X, this.getRelativeScrollX());
-		outState.putFloat(STATE_SCROLL_Y, this.getRelativeScrollY());
+		if (this.isVisible()) {
+			Log.d(Constants.TAG, "EntryDetailPagerFragment: onSaveInstanceState: save scrollY: entryId: " + entryId + ", scrollY: " + this.scrollView.getScrollY());
+			super.onSaveInstanceState(outState);
+			scrollXTable.put(this.entryId, getRelativeScrollX());
+			scrollYTable.put(this.entryId, getRelativeScrollY());
+		}
 	}
 
 	public void updateContent(long id) {
-		if (id != this.entryId) {
-			this.entryId = id;
-			this.entryIdArg[0] = Long.toString(this.entryId);
-			if (this.getRelativeScrollX() > 0 || this.getRelativeScrollY() > 0) {
-				this.scrollX = 0;
-				this.scrollY = 0;
-			} else {
-				this.scrollX = -1;
-				this.scrollY = -1;
-			}
-		}
+		this.entryId = id;
+		this.entryIdArg[0] = Long.toString(this.entryId);
 		getLoaderManager().restartLoader(0, null, this);
 	}
 
@@ -221,6 +238,32 @@ public class EntryDetailFragment extends Fragment implements LoaderManager.Loade
 	@Override
 	public void onLoaderReset(Loader<Cursor> loader) {
 		this.c = null;
+	}
+
+	// util
+	public static void resetScrollPositions() {
+		scrollXTable.clear();
+		scrollYTable.clear();
+	}
+
+	@Override
+	public void setScrollX(float scrollX) {
+		scrollXTable.put(this.entryId, Float.valueOf(scrollX));
+	}
+
+	@Override
+	public void setScrollY(float scrollY) {
+		scrollYTable.put(this.entryId, Float.valueOf(scrollY));
+	}
+
+	public void resetScrollX() {
+		scrollXTable.remove(entryId);
+		this.scrollView.setScrollX(0);
+	}
+
+	public void resetScrollY() {
+		scrollYTable.remove(entryId);
+		this.scrollView.setScrollY(0);
 	}
 
 	private float getRelativeScrollX() {

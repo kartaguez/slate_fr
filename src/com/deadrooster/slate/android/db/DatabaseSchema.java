@@ -20,4 +20,18 @@ public class DatabaseSchema {
             + Model.Entries.AUTHOR + " TEXT NOT NULL"
             + ");";
 
+	public static final String CREATE_TABLE_TEMP_ENTRIES = "CREATE TABLE "
+			+ Model.Entries.TABLE_TEMP_NAME
+			+ " ("
+            + Model.Entries._ID + " INTEGER PRIMARY KEY, "
+            + Model.Entries.TITLE + " TEXT NOT NULL, "
+            + Model.Entries.CATEGORY + " INTEGER, "
+            + Model.Entries.DESCRIPTION + " TEXT NOT NULL, "
+            + Model.Entries.PREVIEW + " TEXT NOT NULL, "
+            + Model.Entries.THUMBNAIL_URL + " TEXT NOT NULL, "
+            + Model.Entries.THUMBNAIL_DATA + " BLOB, "
+            + Model.Entries.PUBLICATION_DATE + " TEXT NOT NULL, "
+            + Model.Entries.AUTHOR + " TEXT NOT NULL"
+            + ");";
+
 }

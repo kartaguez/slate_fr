@@ -14,5 +14,9 @@ public class Uris {
 		public static final Uri CONTENT_URI_ENTRIES = Uri.parse(Provider.CONTENT_URI + "/" + Model.Entries.TABLE_NAME + "/" + ALL);
 		public static final Uri CONTENT_URI_ENTRIES_DISTINCT = Uri.parse(Provider.CONTENT_URI + "/" + Model.Entries.TABLE_NAME + _DISTINCT + "/" + ALL);
 		public static final Uri CONTENT_URI_ENTRY_ID = Uri.parse(Provider.CONTENT_URI + "/" + Model.Entries.TABLE_NAME + "/" + ITEM);
+
+		public static final Uri CONTENT_URI_ENTRIES_TEMP = Uri.parse(Provider.CONTENT_URI + "/" + Model.Entries.TABLE_TEMP_NAME + "/" + ALL);
+		public static final Uri CONTENT_URI_ENTRIES_TEMP_DISTINCT = Uri.parse(Provider.CONTENT_URI + "/" + Model.Entries.TABLE_TEMP_NAME + _DISTINCT + "/" + ALL);
+		public static final Uri CONTENT_URI_ENTRY_TEMP_ID = Uri.parse(Provider.CONTENT_URI + "/" + Model.Entries.TABLE_TEMP_NAME + "/" + ITEM);
 	}
 }
