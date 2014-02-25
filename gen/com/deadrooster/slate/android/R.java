@@ -21,11 +21,14 @@ public final class R {
          */
         public static final int ga_reportUncaughtExceptions=0x7f060001;
     }
+    public static final class color {
+        public static final int purple=0x7f070000;
+    }
     public static final class dimen {
         /**  Default screen margins, per the Android Design guidelines. 
          */
-        public static final int activity_horizontal_margin=0x7f070000;
-        public static final int activity_vertical_margin=0x7f070001;
+        public static final int activity_horizontal_margin=0x7f080000;
+        public static final int activity_vertical_margin=0x7f080001;
     }
     public static final class drawable {
         public static final int default_image=0x7f020000;
@@ -36,26 +39,26 @@ public final class R {
         public static final int row_unactivated=0x7f020005;
     }
     public static final class id {
-        public static final int action_last_refresh_time_id=0x7f0a0000;
-        public static final int empty=0x7f0a0001;
-        public static final int entry_author_id=0x7f0a0007;
-        public static final int entry_author_prefix_id=0x7f0a0006;
-        public static final int entry_blank_author_id=0x7f0a0008;
-        public static final int entry_detail_container=0x7f0a000c;
-        public static final int entry_detail_pager_id=0x7f0a000d;
-        public static final int entry_list_container=0x7f0a000e;
-        public static final int entry_preview=0x7f0a0011;
-        public static final int entry_preview_id=0x7f0a0004;
-        public static final int entry_publication_date_id=0x7f0a000a;
-        public static final int entry_publication_date_prefix_id=0x7f0a0009;
-        public static final int entry_scroll_id=0x7f0a0002;
-        public static final int entry_thumbnail=0x7f0a000f;
-        public static final int entry_thumbnail_id=0x7f0a0005;
-        public static final int entry_title=0x7f0a0010;
-        public static final int entry_title_id=0x7f0a0003;
-        public static final int entry_webview_id=0x7f0a000b;
-        public static final int last_refresh_date=0x7f0a0012;
-        public static final int refresh=0x7f0a0013;
+        public static final int action_last_refresh_time_id=0x7f0b0000;
+        public static final int empty=0x7f0b0001;
+        public static final int entry_author_id=0x7f0b0007;
+        public static final int entry_author_prefix_id=0x7f0b0006;
+        public static final int entry_blank_author_id=0x7f0b0008;
+        public static final int entry_detail_container=0x7f0b000c;
+        public static final int entry_detail_pager_id=0x7f0b000d;
+        public static final int entry_list_container=0x7f0b000e;
+        public static final int entry_preview=0x7f0b0011;
+        public static final int entry_preview_id=0x7f0b0004;
+        public static final int entry_publication_date_id=0x7f0b000a;
+        public static final int entry_publication_date_prefix_id=0x7f0b0009;
+        public static final int entry_scroll_id=0x7f0b0002;
+        public static final int entry_thumbnail=0x7f0b000f;
+        public static final int entry_thumbnail_id=0x7f0b0005;
+        public static final int entry_title=0x7f0b0010;
+        public static final int entry_title_id=0x7f0b0003;
+        public static final int entry_webview_id=0x7f0b000b;
+        public static final int last_refresh_date=0x7f0b0012;
+        public static final int refresh=0x7f0b0013;
     }
     public static final class layout {
         public static final int action_menu_last_refresh_date=0x7f030000;
@@ -73,7 +76,7 @@ public final class R {
         public static final int row_entry=0x7f03000c;
     }
     public static final class menu {
-        public static final int main=0x7f090000;
+        public static final int main=0x7f0a0000;
     }
     public static final class string {
         public static final int action_last_refresh_date=0x7f050005;
@@ -113,7 +116,7 @@ public final class R {
         public static final int title_activity_entry=0x7f050006;
     }
     public static final class style {
-        public static final int ActionBarButton=0x7f080009;
+        public static final int ActionBarButton=0x7f090009;
         /** 
         Base application theme for API 11+. This theme completely replaces
         AppBaseTheme from res/values/styles.xml on API 11+ devices.
@@ -126,14 +129,14 @@ public final class R {
     
  API 14 theme customizations can go here. 
          */
-        public static final int AppBaseTheme=0x7f080000;
-        public static final int AppTheme=0x7f080001;
-        public static final int EntryAuthor=0x7f080005;
-        public static final int EntryPreview=0x7f080003;
-        public static final int EntryPublicationDate=0x7f080004;
-        public static final int EntryRowTitle=0x7f080006;
-        public static final int EntryRowTitleTwoPane=0x7f080007;
-        public static final int EntryTitle=0x7f080002;
-        public static final int RowNoEntry=0x7f080008;
+        public static final int AppBaseTheme=0x7f090000;
+        public static final int AppTheme=0x7f090001;
+        public static final int EntryAuthor=0x7f090005;
+        public static final int EntryPreview=0x7f090003;
+        public static final int EntryPublicationDate=0x7f090004;
+        public static final int EntryRowTitle=0x7f090006;
+        public static final int EntryRowTitleTwoPane=0x7f090007;
+        public static final int EntryTitle=0x7f090002;
+        public static final int RowNoEntry=0x7f090008;
     }
 }

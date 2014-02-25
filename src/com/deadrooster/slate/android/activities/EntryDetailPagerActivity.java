@@ -8,6 +8,7 @@ import android.support.v13.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.util.SparseArray;
+import android.view.MenuItem;
 import android.view.ViewGroup;
 
 import com.deadrooster.slate.android.R;
@@ -83,7 +84,13 @@ public class EntryDetailPagerActivity extends Activity {
 		};
 		this.pager.setOnPageChangeListener(onPageChangeListener);
 	}
-	
+
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		outState.putInt(ACTIVATED_POSITION, this.activatedPosition);
+		super.onSaveInstanceState(outState);
+	}
+
 	public class EntryPagerAdapter extends FragmentStatePagerAdapter {
 
 		private int firstPageSelected = -1;
@@ -155,14 +162,13 @@ public class EntryDetailPagerActivity extends Activity {
 	}
 
 	@Override
-	public boolean onNavigateUp() {
-		finish();
-		return true;
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    switch (item.getItemId()) {
+	    case android.R.id.home:
+	    	finish();
+	        return true;
+	    }
+	    return super.onOptionsItemSelected(item);
 	}
 
-	@Override
-	protected void onSaveInstanceState(Bundle outState) {
-		outState.putInt(ACTIVATED_POSITION, this.activatedPosition);
-		super.onSaveInstanceState(outState);
-	}
 }

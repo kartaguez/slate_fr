@@ -226,7 +226,7 @@ public class SlateRSSParser {
 	    	description = m.replaceAll("");
 	
 			final List<String> tagValues = new ArrayList<String>();
-			Pattern.compile("<a(?=\\s|>)(?!(?:[^>=]|=(['\"])(?:(?!\\1).)*\\1)*?\\shref=['\"])[^>]*>.*?<\\/a>",Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
+//			Pattern.compile("<a(?=\\s|>)(?!(?:[^>=]|=(['\"])(?:(?!\\1).)*\\1)*?\\shref=['\"])[^>]*>.*?<\\/a>",Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
 			Pattern imageTag = Pattern.compile("<img\\s(?!\\swidth=\"(.+?)\")(.+?)/>");
 			m = imageTag.matcher(description);
 			while (m.find()) {

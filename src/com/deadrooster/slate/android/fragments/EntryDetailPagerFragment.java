@@ -209,10 +209,24 @@ public class EntryDetailPagerFragment extends Fragment implements ScrolledFragme
 	
 			this.authorView.setText(c.getString(8));
 
-			this.webView.loadDataWithBaseURL(null, c.getString(4), MIME_TYPE, ENCODING, null);
+			String htmlData = addStyleToHTML(c.getString(4));
+			this.webView.loadDataWithBaseURL(null, htmlData, MIME_TYPE, ENCODING, null);
 			loadImageViewData(c.getBlob(6), c.getString(5), this.thumbnailView, categoryId);
 
 		}
+	}
+
+	private String addStyleToHTML(String html) {
+		StringBuffer htmlData = new StringBuffer();
+		htmlData.append("<html>");
+		htmlData.append("<head>");
+		htmlData.append("<link rel=\"stylesheet\" type=\"text/css\" href=\"file:///android_asset/style.css\"/>");
+		htmlData.append("</head>");
+		htmlData.append("<body>");
+		htmlData.append(html);
+		htmlData.append("</body>");
+		htmlData.append("</html>");
+		return htmlData.toString();
 	}
 
 	private void loadImageViewData(byte[] data, String url, ImageView viewThumbnail, int category) {

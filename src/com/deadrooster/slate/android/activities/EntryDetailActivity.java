@@ -44,15 +44,10 @@ public class EntryDetailActivity extends GAActivity {
 	public boolean onOptionsItemSelected(MenuItem item) {
 	    switch (item.getItemId()) {
 	    case android.R.id.home:
-	        finish();
+	    	finish();
 	        return true;
 	    }
 	    return super.onOptionsItemSelected(item);
 	}
 
-	@Override
-	public boolean onNavigateUp() {
-		finish();
-		return true;
-	}
 }
