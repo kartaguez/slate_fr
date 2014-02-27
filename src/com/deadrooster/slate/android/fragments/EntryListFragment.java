@@ -16,7 +16,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.widget.ListView;
 
@@ -26,6 +25,7 @@ import com.deadrooster.slate.android.adapters.EntryListAdapter;
 import com.deadrooster.slate.android.adapters.util.LoadNewDataTask;
 import com.deadrooster.slate.android.model.Model.Entries;
 import com.deadrooster.slate.android.provider.Uris;
+import com.deadrooster.slate.android.util.Animations;
 import com.deadrooster.slate.android.util.Callbacks;
 import com.deadrooster.slate.android.util.Constants;
 
@@ -52,8 +52,6 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		public void onItemSelected(long id, int position) {
 		}
 	};
-
-	private static Animation fadeInAnim = null;
 
 	private Callbacks callbacks = null;
 	private int activatedPosition = ListView.INVALID_POSITION;
@@ -265,7 +263,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		Log.d(Constants.TAG, "EntryListFragment: onLoadFinished");
 		loadEntryIds(c);
 		this.adapter.swapCursor(c);
-		getListView().startAnimation(fadeInAnim);
+		getListView().startAnimation(Animations.fadeInAnim);
 		this.isActivable = true;
 		if (this.twoPane) {
 			selectActivatedPosition();
@@ -305,8 +303,4 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		return entryIds;
 	}
 
-	static {
-		fadeInAnim = new AlphaAnimation(0.0f, 1.0f);
-		fadeInAnim.setDuration(200);
-	}
 }

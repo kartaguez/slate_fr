@@ -61,7 +61,9 @@ public class EntryDetailPageFragment extends Fragment implements ScrolledFragmen
 	private ScrollView scrollView;
 	private TextView titleView;
 	private TextView previewView;
+	private TextView prefixPublicationDateView;
 	private TextView publicationDateView;
+	private TextView prefixAuthorView;
 	private TextView authorView;
 	private ImageView thumbnailView;
 	private WebView webView;
@@ -149,7 +151,9 @@ public class EntryDetailPageFragment extends Fragment implements ScrolledFragmen
 		});
 		this.titleView = (TextView) rootView.findViewById(R.id.entry_title_id);
 		this.previewView = (TextView) rootView.findViewById(R.id.entry_preview_id);
+		this.prefixPublicationDateView = (TextView) rootView.findViewById(R.id.entry_publication_date_prefix_id);
 		this.publicationDateView = (TextView) rootView.findViewById(R.id.entry_publication_date_id);
+		this.prefixAuthorView = (TextView) rootView.findViewById(R.id.entry_author_prefix_id);
 		this.authorView = (TextView) rootView.findViewById(R.id.entry_author_id);
 		this.thumbnailView = (ImageView) rootView.findViewById(R.id.entry_thumbnail_id);
 		this.webView = (WebView) rootView.findViewById(R.id.entry_webview_id);
@@ -204,8 +208,10 @@ public class EntryDetailPageFragment extends Fragment implements ScrolledFragmen
 			this.previewView.setText(c.getString(3));
 			this.thumbnailView.setImageBitmap(DefaultImage.getInstance(this.getActivity()).getImage());
 	
+			this.prefixPublicationDateView.setAlpha(1.0f);
 			this.publicationDateView.setText(c.getString(7));
-	
+
+			this.prefixAuthorView.setAlpha(1.0f);
 			this.authorView.setText(c.getString(8));
 
 			String htmlData = addStyleToHTML(c.getString(4));

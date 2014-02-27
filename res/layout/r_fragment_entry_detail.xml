@@ -41,7 +41,8 @@
 			        android:layout_height="match_parent"
 			        android:gravity="left|bottom"
 			        android:layout_gravity="left|bottom"
-			        android:text="@string/entry_author_text" />
+			        android:text="@string/entry_author_text"
+			        android:alpha="0.0" />
 			    <TextView
 			        android:id="@+id/entry_author_id"
 			        style="@style/EntryAuthor" />
@@ -62,7 +63,8 @@
 			        android:layout_height="match_parent"
 			        android:gravity="left|bottom"
 			        android:layout_gravity="left|bottom"
-			        android:text="@string/entry_publication_date_text" />
+			        android:text="@string/entry_publication_date_text"
+			        android:alpha="0.0" />
 			    <TextView
 			        android:id="@+id/entry_publication_date_id"
 			        style="@style/EntryPublicationDate" />

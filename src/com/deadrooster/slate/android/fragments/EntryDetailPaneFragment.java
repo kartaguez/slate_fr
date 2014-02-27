@@ -16,8 +16,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.ViewTreeObserver.OnGlobalLayoutListener;
-import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
 import android.webkit.WebView;
 import android.widget.ImageView;
 import android.widget.ScrollView;
@@ -30,6 +28,7 @@ import com.deadrooster.slate.android.adapters.util.LoadImageFromDb;
 import com.deadrooster.slate.android.adapters.util.LoadImageFromInternet;
 import com.deadrooster.slate.android.model.Model.Entries;
 import com.deadrooster.slate.android.provider.Uris;
+import com.deadrooster.slate.android.util.Animations;
 import com.deadrooster.slate.android.util.Constants;
 import com.deadrooster.slate.android.util.DefaultImage;
 
@@ -56,8 +55,6 @@ public class EntryDetailPaneFragment extends Fragment implements LoaderManager.L
 	private static final String MIME_TYPE = "text/html";
 	private static final String ENCODING = "utf-8";
 
-	private static Animation fadeInAnim = null;
-
 	private long latestloadedEntryId = -1;
 	private long currentLoadedEntryId = -1;
 	private long entryId = -1;
@@ -67,7 +64,9 @@ public class EntryDetailPaneFragment extends Fragment implements LoaderManager.L
 	private float scrollY = -1;
 	private TextView titleView;
 	private TextView previewView;
+	private TextView prefixPublicationDateView;
 	private TextView publicationDateView;
+	private TextView prefixAuthorView;
 	private TextView authorView;
 	private ImageView thumbnailView;
 	private WebView webView;
@@ -143,7 +142,9 @@ public class EntryDetailPaneFragment extends Fragment implements LoaderManager.L
 		});
 		this.titleView = (TextView) rootView.findViewById(R.id.entry_title_id);
 		this.previewView = (TextView) rootView.findViewById(R.id.entry_preview_id);
+		this.prefixPublicationDateView = (TextView) rootView.findViewById(R.id.entry_publication_date_prefix_id);
 		this.publicationDateView = (TextView) rootView.findViewById(R.id.entry_publication_date_id);
+		this.prefixAuthorView = (TextView) rootView.findViewById(R.id.entry_author_prefix_id);
 		this.authorView = (TextView) rootView.findViewById(R.id.entry_author_id);
 		this.thumbnailView = (ImageView) rootView.findViewById(R.id.entry_thumbnail_id);
 		this.webView = (WebView) rootView.findViewById(R.id.entry_webview_id);
@@ -212,21 +213,34 @@ public class EntryDetailPaneFragment extends Fragment implements LoaderManager.L
 				int categoryId = c.getInt(1);
 		
 				this.titleView.setText(c.getString(2));
+				this.titleView.startAnimation(Animations.fadeInAnim);
+
 				this.previewView.setText(c.getString(3));
+				this.previewView.startAnimation(Animations.fadeInAnim);
+
 				this.thumbnailView.setImageBitmap(DefaultImage.getInstance(this.getActivity()).getImage());
-		
+				this.thumbnailView.startAnimation(Animations.fadeInAnim);
+
+				this.prefixPublicationDateView.setAlpha(1.0f);
+				this.prefixPublicationDateView.startAnimation(Animations.fadeInAnim);
 				this.publicationDateView.setText(c.getString(7));
-		
+				this.publicationDateView.startAnimation(Animations.fadeInAnim);
+
+				this.prefixAuthorView.setAlpha(1.0f);
+				this.prefixAuthorView.startAnimation(Animations.fadeInAnim);
 				this.authorView.setText(c.getString(8));
-	
+				this.authorView.startAnimation(Animations.fadeInAnim);
+
 				String htmlData = addStyleToHTML(c.getString(4));
 				this.webView.loadDataWithBaseURL(null, htmlData, MIME_TYPE, ENCODING, null);
+				this.webView.startAnimation(Animations.fadeInAnim);
+
 				this.thumbnailView.setImageBitmap(DefaultImage.getInstance(getActivity()).getImage());
+				// TODO JGU
+//				this.thumbnailView.startAnimation(Animations.fadeInAnim);
+				///JGU
 				loadImageViewData(c.getBlob(6), c.getString(5), this.thumbnailView, categoryId);
 
-				// TODO JGU
-//				this.scrollView.startAnimation(fadeInAnim);
-				///JGU
 			}
 
 		}
@@ -284,9 +298,5 @@ public class EntryDetailPaneFragment extends Fragment implements LoaderManager.L
 		return this.scrollView.getChildAt(0).getHeight();
 	}
 
-	static {
-		fadeInAnim = new AlphaAnimation(0.0f, 1.0f);
-		fadeInAnim.setDuration(200);
-		fadeInAnim.setZAdjustment(Animation.ZORDER_BOTTOM);
-	}
+
 }

@@ -244,6 +244,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 				arguments.putLong(EntryDetailPaneFragment.ARG_ITEM_ID, id);
 				fragment.setArguments(arguments);
 				FragmentTransaction ft = getFragmentManager().beginTransaction();
+				ft.setCustomAnimations(android.R.animator.fade_in, 0);
 				ft.replace(R.id.entry_detail_container, fragment).commitAllowingStateLoss();
 			} else {
 				if (this.activatedItemId != id) {
