@@ -9,7 +9,11 @@ package com.deadrooster.slate.android;
 
 public final class R {
     public static final class anim {
-        public static final int rotation_clockwise=0x7f040000;
+        public static final int fade_in=0x7f040000;
+        public static final int fade_out=0x7f040001;
+        public static final int rotation_clockwise=0x7f040002;
+        public static final int slide_in_right=0x7f040003;
+        public static final int slide_out_right=0x7f040004;
     }
     public static final class attr {
     }
@@ -46,19 +50,20 @@ public final class R {
         public static final int entry_blank_author_id=0x7f0b0008;
         public static final int entry_detail_container=0x7f0b000c;
         public static final int entry_detail_pager_id=0x7f0b000d;
+        public static final int entry_linear_layout_id=0x7f0b000f;
         public static final int entry_list_container=0x7f0b000e;
-        public static final int entry_preview=0x7f0b0011;
+        public static final int entry_preview=0x7f0b0012;
         public static final int entry_preview_id=0x7f0b0004;
         public static final int entry_publication_date_id=0x7f0b000a;
         public static final int entry_publication_date_prefix_id=0x7f0b0009;
         public static final int entry_scroll_id=0x7f0b0002;
-        public static final int entry_thumbnail=0x7f0b000f;
+        public static final int entry_thumbnail=0x7f0b0010;
         public static final int entry_thumbnail_id=0x7f0b0005;
-        public static final int entry_title=0x7f0b0010;
+        public static final int entry_title=0x7f0b0011;
         public static final int entry_title_id=0x7f0b0003;
         public static final int entry_webview_id=0x7f0b000b;
-        public static final int last_refresh_date=0x7f0b0012;
-        public static final int refresh=0x7f0b0013;
+        public static final int last_refresh_date=0x7f0b0013;
+        public static final int refresh=0x7f0b0014;
     }
     public static final class layout {
         public static final int action_menu_last_refresh_date=0x7f030000;

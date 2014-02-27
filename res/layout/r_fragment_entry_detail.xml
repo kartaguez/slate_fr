@@ -5,10 +5,11 @@
     android:id="@+id/entry_scroll_id"
     android:layout_width="match_parent"
 	android:layout_height="wrap_content"
-	tools:context=".EntryDetailFragment" >
+	tools:context=".EntryDetailPaneFragment" >
 	<LinearLayout
 	    android:layout_width="match_parent"
 	    android:layout_height="wrap_content"
+	    android:id="@+id/entry_linear_layout_id"
 	    android:orientation="vertical"
 	    android:layout_margin="10sp"
 	    android:descendantFocusability="blocksDescendants" >

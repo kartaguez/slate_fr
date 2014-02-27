@@ -12,6 +12,7 @@ import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
 
 import android.app.ActionBar;
+import android.app.FragmentTransaction;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentProviderOperation;
@@ -40,8 +41,8 @@ import android.widget.TextView;
 import com.deadrooster.slate.android.R;
 import com.deadrooster.slate.android.adapters.util.Categories;
 import com.deadrooster.slate.android.adapters.util.LoadNewDataTask;
-import com.deadrooster.slate.android.fragments.EntryDetailFragment;
-import com.deadrooster.slate.android.fragments.EntryDetailPagerFragment;
+import com.deadrooster.slate.android.fragments.EntryDetailPageFragment;
+import com.deadrooster.slate.android.fragments.EntryDetailPaneFragment;
 import com.deadrooster.slate.android.fragments.EntryListFragment;
 import com.deadrooster.slate.android.ga.GAActivity;
 import com.deadrooster.slate.android.model.Model.Entries;
@@ -62,6 +63,7 @@ import com.tapstream.sdk.Tapstream;
 public class EntryListActivity extends GAActivity implements Callbacks, ActionBar.OnNavigationListener {
 
 	public static final String CURRENT_CATEGORY = "current_category";
+	public static final String ACTIVATED_ITEM_ID = "activated_item_id";
 	public static final String ENTRY_IDS = "entry_ids";
 
 	public static final String[] PROJECTION = new String[] {Entries._ID, Entries.TITLE, Entries.DESCRIPTION, Entries.PREVIEW, Entries.THUMBNAIL_URL, Entries.THUMBNAIL_DATA, Entries.PUBLICATION_DATE, Entries.AUTHOR};
@@ -72,6 +74,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	private MenuItem refreshItem = null;
 	private boolean twoPane = false;
 	private int category = 0;
+	private long activatedItemId = -1;
 	private boolean refreshInProgressMustBeNotified = false;
 	private long lastRefreshSuccessDate = -1;
 	private long lastLoadedDataDate = -1;
@@ -104,8 +107,11 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 			if (savedInstanceState.containsKey(CURRENT_CATEGORY)) {
 				this.category = savedInstanceState.getInt(CURRENT_CATEGORY);
 			}
+			if (savedInstanceState.containsKey(ACTIVATED_ITEM_ID)) {
+				this.activatedItemId = savedInstanceState.getLong(ACTIVATED_ITEM_ID);
+			}
 		}
-		else if (Connectivity.isWifiConnected(this)) {
+		else if (Connectivity.isWifiConnected(this) || isFirstLaunchEver()) {
 			refreshInProgressMustBeNotified = true;
 			invalidateOptionsMenu();
 		}
@@ -127,6 +133,12 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 			Log.d(Constants.TAG, "EntryListActivity: EntryListFragment not created");
 		}
 
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		Log.d(Constants.TAG, "EntryListActivity: onActivityResult");
+		super.onActivityResult(requestCode, resultCode, data);
 	}
 
 	@Override
@@ -168,6 +180,26 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 
 	}
 
+	public void onRestoreInstanceState(Bundle outState) {
+		Log.d(Constants.TAG, "EntryListActivity: onRestoreInstanceState");
+		if (outState != null) {
+			if (outState.containsKey(CURRENT_CATEGORY)) {
+				this.category = outState.getInt(CURRENT_CATEGORY);
+			}
+			if (outState.containsKey(ACTIVATED_ITEM_ID)) {
+				this.activatedItemId = outState.getLong(ACTIVATED_ITEM_ID);
+			}
+		}
+	}
+
+	@Override
+	public void onSaveInstanceState(Bundle outState) {
+		Log.d(Constants.TAG, "EntryListActivity: onSaveInstanceState");
+		super.onSaveInstanceState(outState);
+		outState.putInt(CURRENT_CATEGORY, this.category);
+		outState.putLong(ACTIVATED_ITEM_ID, this.activatedItemId);
+	}
+
 	@Override
 	public void onPause() {
 		Log.d(Constants.TAG, "EntryListActivity: onPause");
@@ -197,20 +229,56 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		super.onDestroy();
 	}
 
+	/**
+	 * Callback method from {@link EntryListFragment.Callbacks} indicating that
+	 * the item with the given ID was selected.
+	 */
 	@Override
-	public void onSaveInstanceState(Bundle outState) {
-		Log.d(Constants.TAG, "EntryListActivity: onSaveInstanceState");
-		super.onSaveInstanceState(outState);
-		outState.putInt(CURRENT_CATEGORY, this.category);
+	public void onItemSelected(long id, int position) {
+		Log.d(Constants.TAG, "EntryListActivity: onItemSelected: position: " + position + ", id: " + id);
+		if (this.twoPane) {
+			EntryDetailPaneFragment fragment = (EntryDetailPaneFragment) getFragmentManager().findFragmentById(R.id.entry_detail_container);
+			if (fragment == null) {
+				fragment = new EntryDetailPaneFragment();
+				Bundle arguments = new Bundle();
+				arguments.putLong(EntryDetailPaneFragment.ARG_ITEM_ID, id);
+				fragment.setArguments(arguments);
+				FragmentTransaction ft = getFragmentManager().beginTransaction();
+				ft.replace(R.id.entry_detail_container, fragment).commitAllowingStateLoss();
+			} else {
+				if (this.activatedItemId != id) {
+					this.activatedItemId = id;
+					fragment.updateContent(id);
+				}
+			}
+		} else {
+			EntryListFragment fragment = (EntryListFragment) getFragmentManager().findFragmentById(R.id.entry_list_container);
+			long[] entryIds = fragment.getEntryIds();
+			
+			Intent detailIntent = new Intent(this, EntryDetailPagerActivity.class);
+			detailIntent.putExtra(CURRENT_CATEGORY, this.category);
+			detailIntent.putExtra(ENTRY_IDS, entryIds);
+			detailIntent.putExtra(EntryDetailPageFragment.ARG_NUM, entryIds.length);
+			detailIntent.putExtra(EntryDetailPageFragment.ARG_ITEM_POSITION, position);
+			EntryDetailPageFragment.resetScrollPositions();
+			Log.d(Constants.TAG, "EntryListActivity: onItemSelected: CURRENT_CATEGORY: " + this.category + ", ARG_NUM: " + entryIds.length + ", ARG_ITEM_POSITION: "  + position);
+			startActivityForResult(detailIntent, 0);
+			overridePendingTransition(R.anim.slide_in_right, R.anim.fade_out);
+		}
 	}
 
-	public void onRestoreInstanceState(Bundle outState) {
-		Log.d(Constants.TAG, "EntryListActivity: onRestoreInstanceState");
-		if (outState != null) {
-			if (outState.containsKey(CURRENT_CATEGORY)) {
-				this.category = outState.getInt(CURRENT_CATEGORY);
-			}
+	// options menu
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		int itemId = item.getItemId();
+		switch (itemId) {
+		case R.id.refresh:
+			launchRefreshActions(false, true);
+			break;
+		default:
+			break;
 		}
+		return super.onOptionsItemSelected(item);
 	}
 
 	@Override
@@ -309,23 +377,6 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		}
 	}
 
-	private String getTimeAsString(SlateCalendar calendar) {
-		return getResources().getString(R.string.date_prefix_hour) + refreshDateTimeFormat.format(calendar.getTime());
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		int itemId = item.getItemId();
-		switch (itemId) {
-		case R.id.refresh:
-			launchRefreshActions(false, true);
-			break;
-		default:
-			break;
-		}
-		return super.onOptionsItemSelected(item);
-	}
-
 	private void loadLastRefreshDate() {
 		Log.d(Constants.TAG, "EntryListActivity: loadLastRefreshDate");
 
@@ -333,6 +384,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	    this.lastRefreshSuccessDate = settings.getLong(Preferences.PREF_KEY_LAST_REFRESH_DATE, -1);
 	}
 
+	// data
 	private boolean checkDataSwapAndLoadNeeded() {
 		Log.d(Constants.TAG, "EntryListActivity: checkDataReloadNeeded");
 
@@ -345,45 +397,6 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	    }
 
 	    return ret;
-	}
-
-	/**
-	 * Callback method from {@link EntryListFragment.Callbacks} indicating that
-	 * the item with the given ID was selected.
-	 */
-	@Override
-	public void onItemSelected(long id, int position) {
-		Log.d(Constants.TAG, "EntryListActivity: onItemSelected: position: " + position + ", id: " + id);
-		if (this.twoPane) {
-			EntryDetailFragment fragment = (EntryDetailFragment) getFragmentManager().findFragmentById(R.id.entry_detail_container);
-			if (fragment == null) {
-				fragment = new EntryDetailFragment();
-				Bundle arguments = new Bundle();
-				arguments.putLong(EntryDetailFragment.ARG_ITEM_ID, id);
-				fragment.setArguments(arguments);
-				getFragmentManager().beginTransaction().replace(R.id.entry_detail_container, fragment).commitAllowingStateLoss();
-			} else {
-				fragment.updateContent(id);
-			}
-		} else {
-			EntryListFragment fragment = (EntryListFragment) getFragmentManager().findFragmentById(R.id.entry_list_container);
-			long[] entryIds = fragment.getEntryIds();
-			
-			Intent detailIntent = new Intent(this, EntryDetailPagerActivity.class);
-			detailIntent.putExtra(CURRENT_CATEGORY, this.category);
-			detailIntent.putExtra(ENTRY_IDS, entryIds);
-			detailIntent.putExtra(EntryDetailPagerFragment.ARG_NUM, entryIds.length);
-			detailIntent.putExtra(EntryDetailPagerFragment.ARG_ITEM_POSITION, position);
-			EntryDetailPagerFragment.resetScrollPositions();
-			Log.d(Constants.TAG, "EntryListActivity: onItemSelected: CURRENT_CATEGORY: " + this.category + ", ARG_NUM: " + entryIds.length + ", ARG_ITEM_POSITION: "  + position);
-			startActivityForResult(detailIntent, 0);
-		}
-	}
-
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		Log.d(Constants.TAG, "EntryListActivity: onActivityResult");
-		super.onActivityResult(requestCode, resultCode, data);
 	}
 
 	// action bar
@@ -448,6 +461,7 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 		}
 	}
 
+	// refresh actions
 	private void launchRefreshActions(boolean alreadyLaunchedInBackground, boolean handleRefreshIcon) {
 		Log.d(Constants.TAG, "EntryListActivity: launchRefreshBatch: " + alreadyLaunchedInBackground + ", " + handleRefreshIcon);
 		fireRefreshEvent();
@@ -540,6 +554,23 @@ public class EntryListActivity extends GAActivity implements Callbacks, ActionBa
 	// getters
 	public boolean isTwoPane() {
 		return twoPane;
+	}
+
+	private boolean isFirstLaunchEver() {
+		SharedPreferences settings = getSharedPreferences(Preferences.PREFS_NAME, 0);
+	    boolean hasAlreadyBeenLaunched = settings.getBoolean(Preferences.PREF_KEY_HAS_ALREADY_BEEN_LAUNCHED, false);
+
+	    if (!hasAlreadyBeenLaunched) {
+			SharedPreferences.Editor editor = settings.edit();
+		    editor.putBoolean(Preferences.PREF_KEY_HAS_ALREADY_BEEN_LAUNCHED, true);
+		    editor.commit();
+		}
+
+	    return !hasAlreadyBeenLaunched;
+	}
+
+	private String getTimeAsString(SlateCalendar calendar) {
+		return getResources().getString(R.string.date_prefix_hour) + refreshDateTimeFormat.format(calendar.getTime());
 	}
 
 	// private classes

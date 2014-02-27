@@ -16,6 +16,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.widget.ListView;
 
 import com.deadrooster.slate.android.R;
@@ -50,6 +52,8 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		public void onItemSelected(long id, int position) {
 		}
 	};
+
+	private static Animation fadeInAnim = null;
 
 	private Callbacks callbacks = null;
 	private int activatedPosition = ListView.INVALID_POSITION;
@@ -100,6 +104,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 		Log.d(Constants.TAG, "EntryListFragment: onCreateView");
 		View rootView = inflater.inflate(R.layout.r_fragment_entry_list, container, false);
+
 		return rootView;
 	}
 
@@ -196,12 +201,14 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 
 	public void switchCategory(int category) {
 		Log.d(Constants.TAG, "EntryListFragment: switchCategory to " + category);
-		this.isActivable = false;
-		this.category = category;
-		this.activatedPosition = 0;
-		getListView().setSelection(0);
-		Log.d(Constants.TAG, "EntryListFragment: restartLoader");
-		getLoaderManager().restartLoader(0, null, this);
+		if (category != this.category) {
+			this.isActivable = false;
+			this.category = category;
+			this.activatedPosition = 0;
+			getListView().setSelection(0);
+			Log.d(Constants.TAG, "EntryListFragment: restartLoader");
+			getLoaderManager().restartLoader(0, null, this);
+		}
 	}
 
 	@Override
@@ -258,6 +265,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		Log.d(Constants.TAG, "EntryListFragment: onLoadFinished");
 		loadEntryIds(c);
 		this.adapter.swapCursor(c);
+		getListView().startAnimation(fadeInAnim);
 		this.isActivable = true;
 		if (this.twoPane) {
 			selectActivatedPosition();
@@ -297,4 +305,8 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		return entryIds;
 	}
 
+	static {
+		fadeInAnim = new AlphaAnimation(0.0f, 1.0f);
+		fadeInAnim.setDuration(200);
+	}
 }

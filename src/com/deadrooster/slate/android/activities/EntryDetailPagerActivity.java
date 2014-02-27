@@ -13,7 +13,7 @@ import android.view.ViewGroup;
 
 import com.deadrooster.slate.android.R;
 import com.deadrooster.slate.android.adapters.util.Categories;
-import com.deadrooster.slate.android.fragments.EntryDetailPagerFragment;
+import com.deadrooster.slate.android.fragments.EntryDetailPageFragment;
 
 public class EntryDetailPagerActivity extends Activity {
 
@@ -41,7 +41,7 @@ public class EntryDetailPagerActivity extends Activity {
 		if (savedInstanceState != null && savedInstanceState.containsKey(ACTIVATED_POSITION)) {
 			this.activatedPosition = savedInstanceState.getInt(ACTIVATED_POSITION);
 		} else {
-			this.activatedPosition = getIntent().getIntExtra(EntryDetailPagerFragment.ARG_ITEM_POSITION, 0);
+			this.activatedPosition = getIntent().getIntExtra(EntryDetailPageFragment.ARG_ITEM_POSITION, 0);
 		}
 
 		this.adapter = new EntryPagerAdapter(getFragmentManager(), entryIds, activatedPosition);
@@ -51,8 +51,8 @@ public class EntryDetailPagerActivity extends Activity {
 		this.pager.setCurrentItem(activatedPosition);
 
 		OnPageChangeListener onPageChangeListener = new OnPageChangeListener() {
-			private EntryDetailPagerFragment lastFragment;
-			private EntryDetailPagerFragment currentFragment;
+			private EntryDetailPageFragment lastFragment;
+			private EntryDetailPageFragment currentFragment;
 			
 			@Override
 			public void onPageSelected(int position) {
@@ -94,7 +94,7 @@ public class EntryDetailPagerActivity extends Activity {
 	public class EntryPagerAdapter extends FragmentStatePagerAdapter {
 
 		private int firstPageSelected = -1;
-		private SparseArray<EntryDetailPagerFragment> fragments = new SparseArray<EntryDetailPagerFragment>();
+		private SparseArray<EntryDetailPageFragment> fragments = new SparseArray<EntryDetailPageFragment>();
 		private long[] entryIds;
 		private int num;
 
@@ -111,14 +111,14 @@ public class EntryDetailPagerActivity extends Activity {
 
 		@Override
 		public Object instantiateItem(ViewGroup container, int position) {
-			EntryDetailPagerFragment fragment = (EntryDetailPagerFragment) super.instantiateItem(container, position);
+			EntryDetailPageFragment fragment = (EntryDetailPageFragment) super.instantiateItem(container, position);
 			this.fragments.put(position, fragment);
 			return fragment;
 		}
 
 		@Override
 		public Fragment getItem(int position) {
-			EntryDetailPagerFragment fragment = EntryDetailPagerFragment.newInstance(this.entryIds[position], this.num, position);
+			EntryDetailPageFragment fragment = EntryDetailPageFragment.newInstance(this.entryIds[position], this.num, position);
 			this.fragments.put(position, fragment);
 			return fragment;
 		}
@@ -129,8 +129,8 @@ public class EntryDetailPagerActivity extends Activity {
 			this.fragments.delete(position);
 		}
 
-		public EntryDetailPagerFragment getFragment(int position) {
-			EntryDetailPagerFragment fragment = null;
+		public EntryDetailPageFragment getFragment(int position) {
+			EntryDetailPageFragment fragment = null;
 			if (this.fragments != null) {
 				fragment = this.fragments.get(position);
 			}
@@ -155,7 +155,7 @@ public class EntryDetailPagerActivity extends Activity {
 			this.firstPageSelected = firstPageSelected;
 		}
 
-		public SparseArray<EntryDetailPagerFragment> getFragments() {
+		public SparseArray<EntryDetailPageFragment> getFragments() {
 			return fragments;
 		}
 
@@ -165,10 +165,20 @@ public class EntryDetailPagerActivity extends Activity {
 	public boolean onOptionsItemSelected(MenuItem item) {
 	    switch (item.getItemId()) {
 	    case android.R.id.home:
-	    	finish();
+	    	cleanFinish();
 	        return true;
 	    }
 	    return super.onOptionsItemSelected(item);
 	}
 
+	@Override
+	public void onBackPressed() {
+		super.onBackPressed();
+		cleanFinish();
+	}
+
+	private void cleanFinish() {
+		finish();
+		overridePendingTransition(R.anim.fade_in, R.anim.slide_out_right);
+	}
 }

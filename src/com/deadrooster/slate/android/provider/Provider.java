@@ -164,15 +164,9 @@ public class Provider extends ContentProvider {
 			switch (uriMatchCode) {
 				case UriMatchingCodes.Entries.ENTRIES:
 					insertedObjectUri = ContentUris.withAppendedId(Uris.Entries.CONTENT_URI_ENTRY_ID, rowId);
-					getContext().getContentResolver().notifyChange(insertedObjectUri, null);
-					getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
-					getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
 					return insertedObjectUri;
 				case UriMatchingCodes.Entries.ENTRIES_TEMP:
 					insertedObjectUri = ContentUris.withAppendedId(Uris.Entries.CONTENT_URI_ENTRY_TEMP_ID, rowId);
-					getContext().getContentResolver().notifyChange(insertedObjectUri, null);
-					getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_TEMP_DISTINCT, null);
-					getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_TEMP, null);
 					return insertedObjectUri;
 				default:
 					throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + uri);
@@ -192,13 +186,9 @@ public class Provider extends ContentProvider {
 		switch (uriMatcher.match(uri)) {
 			case UriMatchingCodes.Entries.ENTRIES :
 				count = db.delete(Model.Entries.TABLE_NAME, selection, selectionArgs);
-				getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_DISTINCT, null);
-				getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES, null);
 				break;
 			case UriMatchingCodes.Entries.ENTRIES_TEMP :
 				count = db.delete(Model.Entries.TABLE_TEMP_NAME, selection, selectionArgs);
-				getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_TEMP_DISTINCT, null);
-				getContext().getContentResolver().notifyChange(Uris.Entries.CONTENT_URI_ENTRIES_TEMP, null);
 				break;
 			default:
 				throw new IllegalArgumentException(UriMatchingCodes.ERR_UNKNOWN_URI + uri);
