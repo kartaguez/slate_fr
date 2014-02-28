@@ -11,6 +11,7 @@
     <string name="hello_world">Hello world!</string>
     <string name="entry_publication_date_text">"Publié le "</string>
     <string name="entry_author_text">"Par "</string>
+    <string name="entry_image_description">"Illustration"</string>
 
     <string name="section_une">A la une</string>
     <string name="section_france">France</string>

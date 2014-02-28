@@ -25,6 +25,7 @@
 		        style="@style/EntryPreview"/>
     		<ImageView
 				android:id="@+id/entry_thumbnail_id"
+				android:contentDescription="@string/entry_image_description"
 		        android:layout_width="match_parent"
 		        android:layout_height="wrap_content"
 		        android:gravity="center"
