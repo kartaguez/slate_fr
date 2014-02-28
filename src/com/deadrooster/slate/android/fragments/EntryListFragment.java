@@ -16,7 +16,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
 import android.widget.ListView;
 
 import com.deadrooster.slate.android.R;
@@ -53,6 +52,7 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		}
 	};
 
+	private View rootView = null;
 	private Callbacks callbacks = null;
 	private int activatedPosition = ListView.INVALID_POSITION;
 	private int category = 0;
@@ -101,9 +101,9 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 		Log.d(Constants.TAG, "EntryListFragment: onCreateView");
-		View rootView = inflater.inflate(R.layout.r_fragment_entry_list, container, false);
-
-		return rootView;
+		this.rootView = inflater.inflate(R.layout.r_fragment_entry_list, container, false);
+		this.rootView.setVisibility(View.GONE);
+		return this.rootView;
 	}
 
 	@Override
@@ -263,6 +263,9 @@ public class EntryListFragment extends ListFragment implements LoaderManager.Loa
 		Log.d(Constants.TAG, "EntryListFragment: onLoadFinished");
 		loadEntryIds(c);
 		this.adapter.swapCursor(c);
+		if (this.rootView.getVisibility() != View.VISIBLE) {
+			this.rootView.setVisibility(View.VISIBLE);
+		}
 		getListView().startAnimation(Animations.fadeInAnim);
 		this.isActivable = true;
 		if (this.twoPane) {

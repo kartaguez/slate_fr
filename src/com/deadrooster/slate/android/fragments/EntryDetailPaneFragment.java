@@ -236,9 +236,7 @@ public class EntryDetailPaneFragment extends Fragment implements LoaderManager.L
 				this.webView.startAnimation(Animations.fadeInAnim);
 
 				this.thumbnailView.setImageBitmap(DefaultImage.getInstance(getActivity()).getImage());
-				// TODO JGU
-//				this.thumbnailView.startAnimation(Animations.fadeInAnim);
-				///JGU
+
 				loadImageViewData(c.getBlob(6), c.getString(5), this.thumbnailView, categoryId);
 
 			}

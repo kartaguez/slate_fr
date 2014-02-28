@@ -3,8 +3,6 @@ package com.deadrooster.slate.android.adapters.util;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
-import com.deadrooster.slate.android.util.Animations;
-
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
@@ -40,7 +38,6 @@ public class LoadImageFromDb extends AsyncTask<String, Integer, Bitmap> {
 		ImageView imageView = this.imageViewReference.get();
 		if (imageView != null) {
 			imageView.setImageBitmap(this.bitmap);
-			imageView.startAnimation(Animations.fadeInAnim);
 			SparseArray<HashMap<Long, Bitmap>> imageCacheById = ImageCacheById.getInstance().getImages();
 			if (imageCacheById != null) {
 				if (imageCacheById.get(category) == null) {

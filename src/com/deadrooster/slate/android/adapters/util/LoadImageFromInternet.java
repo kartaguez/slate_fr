@@ -7,9 +7,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 
-import com.deadrooster.slate.android.util.Animations;
-import com.deadrooster.slate.android.util.DefaultImage;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -18,6 +15,8 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.util.SparseArray;
 import android.widget.ImageView;
+
+import com.deadrooster.slate.android.util.DefaultImage;
 
 public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 
@@ -79,7 +78,6 @@ public class LoadImageFromInternet extends AsyncTask<String, Integer, Bitmap> {
 			LoadImageFromInternet task = getImageTask(imageView);
 			if (this == task) {
 				imageView.setImageBitmap(bitmap);
-				imageView.startAnimation(Animations.fadeInAnim);
 				SparseArray<HashMap<Long, Bitmap>> imageCacheById = ImageCacheById.getInstance().getImages();
 				if (imageCacheById != null) {
 					if (imageCacheById.get(category) == null) {
