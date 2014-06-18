@@ -2,8 +2,8 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.deadrooster.slate.android"
-    android:versionCode="11"
-    android:versionName="1.3.1" >
+    android:versionCode="14"
+    android:versionName="1.3.4" >
 
     <uses-sdk
         android:minSdkVersion="15"
@@ -57,13 +57,6 @@
                 <category
                     android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <activity
-            android:name="com.deadrooster.slate.android.activities.EntryDetailActivity"
-            android:parentActivityName="com.deadrooster.slate.android.activities.EntryListActivity" >
-	        <meta-data
-	            android:name="android.support.PARENT_ACTIVITY"
-	            android:value="com.deadrooster.slate.android.activities.EntryListActivity" /> >
         </activity>
         <activity
             android:name="com.deadrooster.slate.android.activities.EntryDetailPagerActivity"

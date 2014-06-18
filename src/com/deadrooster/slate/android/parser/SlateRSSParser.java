@@ -208,12 +208,36 @@ public class SlateRSSParser {
 			description = description.replace("http://www.slate.fr//", "http://");
 	
 			Matcher m = null;
-	
-	    	Pattern imageHeight = Pattern.compile("height:\\s?[^;]+;\\s?");
+
+	    	Pattern otherHeight = Pattern.compile("-height");
+	    	m = otherHeight.matcher(description);
+	    	description = m.replaceAll("-xxx-xxx-xxx-xxx-xxx");
+
+	    	Pattern otherWidth = Pattern.compile("-width");
+	    	m = otherWidth.matcher(description);
+	    	description = m.replaceAll("-yyy-yyy-yyy-yyy-yyy");
+
+	    	Pattern imageHeight = Pattern.compile("\"height:[^;\"]+;");
+	    	m = imageHeight.matcher(description);
+	    	description = m.replaceAll("\"");
+
+	    	imageHeight = Pattern.compile("\"height:[^;\"]+\"");
+	    	m = imageHeight.matcher(description);
+	    	description = m.replaceAll("\"\"");
+
+	    	imageHeight = Pattern.compile("height:\\s?[^;]+;\\s?");
 	    	m = imageHeight.matcher(description);
 	    	description = m.replaceAll("");
-	
-	    	Pattern imageWidth = Pattern.compile("width:\\s?[^;]+;\\s?");
+
+	    	Pattern imageWidth = Pattern.compile("\"width:[^;\"]+;");
+	    	m = imageWidth.matcher(description);
+	    	description = m.replaceAll("\"");
+
+	    	imageWidth = Pattern.compile("\"width:[^;\"]+\"");
+	    	m = imageWidth.matcher(description);
+	    	description = m.replaceAll("\"\"");
+
+	    	imageWidth = Pattern.compile("width:\\s?[^;]+;\\s?");
 	    	m = imageWidth.matcher(description);
 	    	description = m.replaceAll("");
 	
@@ -238,7 +262,15 @@ public class SlateRSSParser {
 				cleanValue = value.substring(0, value.length() - 2) + " width=\"100%\"/>";
 				description = description.replace(value, cleanValue);
 			}
-	
+
+	    	otherHeight = Pattern.compile("-xxx-xxx-xxx-xxx-xxx");
+	    	m = otherHeight.matcher(description);
+	    	description = m.replaceAll("-height");
+
+	    	otherWidth = Pattern.compile("-yyy-yyy-yyy-yyy-yyy");
+	    	m = otherWidth.matcher(description);
+	    	description = m.replaceAll("-width");
+
 			description = EncodingConverter.toUTF8(description);
 		}
 		return description;
