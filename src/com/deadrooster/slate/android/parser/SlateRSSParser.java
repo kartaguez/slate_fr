@@ -369,6 +369,12 @@ public class SlateRSSParser {
 		parser.nextTag();
 		parser.require(XmlPullParser.END_TAG, NAMESPACE, Tags.THUMBNAIL);
 
+		Matcher m = null;
+
+    	Pattern urlRoot = Pattern.compile("backoffice.slate.fr");
+    	m = urlRoot.matcher(url);
+    	url = m.replaceAll("www.slate.fr");
+
 		return url;
 	}
 
